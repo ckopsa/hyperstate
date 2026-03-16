@@ -19,6 +19,7 @@ from app.web.lessons.routes import router as lessons_router
 from app.web.portfolio.routes import router as portfolio_router
 from app.web.dashboard.routes import router as dashboard_router
 from app.web.calendar.routes import router as calendar_router
+from app.web.reports.routes import router as reports_router
 from app.application.orders.cancel_order import OrderNotFound
 from app.domain.students.errors import StudentNotFound
 from app.domain.subjects.errors import SubjectNotFound, SubjectError
@@ -30,6 +31,7 @@ from app.infrastructure.models.student_model import StudentRow
 from app.infrastructure.models.subject_model import SubjectRow
 from app.infrastructure.models.lesson_model import LessonRow, LessonResourceRow  # noqa: F401
 from app.infrastructure.models.portfolio_photo_model import PortfolioPhotoRow  # noqa: F401
+from app.infrastructure.models.instruction_day_model import InstructionDayRow  # noqa: F401
 
 _UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "portfolio")
 
@@ -45,6 +47,7 @@ app.include_router(lessons_router)
 app.include_router(portfolio_router)
 app.include_router(dashboard_router)
 app.include_router(calendar_router)
+app.include_router(reports_router)
 
 
 @app.on_event("startup")
@@ -141,38 +144,6 @@ async def startup():
             session.add_all(demo_lessons)
             await session.commit()
 
-
-@app.get("/reports/instruction-days", response_model=HyperStateResponse)
-async def reports_instruction_days():
-    from app.infrastructure.database import async_session
-    from app.infrastructure.repositories.lesson_repo import LessonRepository
-    from app.hyperstate.response import ViewContext, ActorContext
-    from app.hyperstate.sections import SummarySection, SummaryItem
-
-    async with async_session() as session:
-        repo = LessonRepository(session)
-        instruction_days = await repo.count_instruction_days()
-
-    return HyperStateResponse(
-        view="report",
-        title="Instruction Days",
-        self_="/reports/instruction-days",
-        context=ViewContext(
-            domain="reports",
-            aggregate="instruction-days",
-            state="overview",
-            actor=ActorContext(id="system", name="System", roles=[]),
-        ),
-        nav=[NavLink(label="Dashboard", href="/dashboard", rel="parent")],
-        sections=[
-            SummarySection(
-                items=[
-                    SummaryItem(label="Instruction Days Completed", value=instruction_days, display="number"),
-                    SummaryItem(label="Target", value=180, display="number"),
-                ]
-            )
-        ],
-    )
 
 
 @app.get("/", response_class=HTMLResponse)

@@ -15,6 +15,7 @@ from app.domain.lessons.states import LessonState
 from app.hyperstate.flash import Flash
 from app.hyperstate.response import ActorContext, HyperStateResponse
 from app.infrastructure.database import get_db
+from app.infrastructure.repositories.instruction_day_repo import InstructionDayRepository
 from app.infrastructure.repositories.lesson_repo import LessonRepository
 from app.infrastructure.repositories.portfolio_photo_repo import PortfolioPhotoRepository
 from app.infrastructure.repositories.subject_repo import SubjectRepository
@@ -110,11 +111,25 @@ async def complete_lesson(
     if lesson is None:
         raise HTTPException(status_code=404, detail=f"Lesson {lesson_id} not found")
 
-    if lesson.state != LessonState.COMPLETED:
+    just_completed = lesson.state != LessonState.COMPLETED
+    if just_completed:
         if lesson.state == LessonState.PENDING:
             lesson.start()
         lesson.complete(completed_by=actor.id)
         await repo.save(lesson)
+
+        # Auto-log instruction day for the completion date
+        completion_date = lesson.completed_at.date() if lesson.completed_at else date.today()
+        subject_repo_pre = SubjectRepository(db)
+        subject = await subject_repo_pre.get(lesson.subject_id)
+        subject_name = subject.name if subject else None
+        instruction_day_repo = InstructionDayRepository(db)
+        await instruction_day_repo.ensure_day(
+            completion_date,
+            lessons_delta=1,
+            subject_name=subject_name,
+        )
+
         await db.commit()
 
     subject_repo = SubjectRepository(db)
