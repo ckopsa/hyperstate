@@ -451,6 +451,7 @@ class HSClient:
         self.client = httpx.Client(base_url=self.base_url, timeout=30.0)
         self.story = story
         self.current: dict | None = None  # last response data
+        self.last_status: int | None = None  # last HTTP status code
 
     def close(self) -> None:
         self.client.close()
@@ -471,17 +472,20 @@ class HSClient:
                 resp = self.client.request(
                     method.upper(), url, headers=HEADERS, json=body,
                 )
+            self.last_status = resp.status_code
         except httpx.ConnectError:
-            print(_red(f"  Connection refused: {self.base_url}{url}"))
+            print(_red(f"  Connection refused: {self.base_url}{url}"), file=sys.stderr)
+            self.last_status = None
             return None
         except httpx.RequestError as e:
-            print(_red(f"  Request error: {e}"))
+            print(_red(f"  Request error: {e}"), file=sys.stderr)
+            self.last_status = None
             return None
 
         try:
             data = resp.json()
         except Exception:
-            print(_red(f"  Non-JSON response ({resp.status_code}): {resp.text[:200]}"))
+            print(_red(f"  Non-JSON response ({resp.status_code}): {resp.text[:200]}"), file=sys.stderr)
             return None
 
         # Record step
@@ -495,7 +499,7 @@ class HSClient:
             ))
 
         if resp.status_code >= 400:
-            print(_red(f"  HTTP {resp.status_code}"))
+            print(_red(f"  HTTP {resp.status_code}"), file=sys.stderr)
 
         self.current = data
         return data
@@ -962,6 +966,9 @@ def main() -> None:
               --record NAME   Record interactions as a named story
               --replay FILE   Replay a saved story file
               --crawl         Crawl all reachable pages and report issues
+              --get PATH      Make a one-shot GET request to PATH
+              --post PATH     Make a one-shot POST request to PATH
+              --request M P   Make a one-shot request using method M to path P
         """),
     )
     parser.add_argument("--base-url", default=DEFAULT_BASE, help=f"Base URL (default: {DEFAULT_BASE})")
@@ -970,6 +977,12 @@ def main() -> None:
     parser.add_argument("--replay", metavar="FILE", help="Replay a saved story file")
     parser.add_argument("--until", type=int, metavar="N", help="Stop replay at step N")
     parser.add_argument("--crawl", action="store_true", help="Crawl and validate all reachable pages")
+
+    # Non-interactive command modes
+    parser.add_argument("--get", metavar="PATH", help="Make a non-interactive GET request")
+    parser.add_argument("--post", metavar="PATH", help="Make a non-interactive POST request")
+    parser.add_argument("--request", nargs=2, metavar=("METHOD", "PATH"), help="Make a non-interactive request")
+    parser.add_argument("--data", help="JSON data body for non-interactive requests")
 
     args = parser.parse_args()
 
@@ -984,6 +997,44 @@ def main() -> None:
     if args.crawl:
         result = crawl(args.base_url, args.start)
         sys.exit(0 if not result.broken_links and not result.form_errors else 1)
+
+    # Non-interactive commands
+    if args.get or args.post or args.request:
+        method = "GET"
+        path = ""
+        if args.get:
+            method = "GET"
+            path = args.get
+        elif args.post:
+            method = "POST"
+            path = args.post
+        elif args.request:
+            method = args.request[0].upper()
+            path = args.request[1]
+
+        body = None
+        if args.data:
+            try:
+                body = json.loads(args.data)
+            except json.JSONDecodeError as e:
+                print(f"Invalid JSON data: {e}", file=sys.stderr)
+                sys.exit(1)
+
+        hs = HSClient(args.base_url)
+        data = hs.fetch(path, method, body)
+        hs.close()
+
+        if data is None:
+            sys.exit(1)
+
+        print(json.dumps(data, indent=2))
+
+        # Determine exit code based on HTTP status
+        # Success is 2xx, 3xx
+        if hs.last_status is not None and 200 <= hs.last_status < 400:
+            sys.exit(0)
+
+        sys.exit(1)
 
     # Interactive / record mode
     story = None
