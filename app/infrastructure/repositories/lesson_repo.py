@@ -82,6 +82,7 @@ class LessonRepository:
         """Return pending/in_progress lessons with scheduled_date strictly after `after`."""
         stmt = (
             select(LessonRow)
+            .options(selectinload(LessonRow.resources))
             .where(LessonRow.scheduled_date > after)
             .where(LessonRow.state.in_([LessonState.PENDING, LessonState.IN_PROGRESS]))
             .order_by(LessonRow.scheduled_date, LessonRow.time_slot, LessonRow.title)

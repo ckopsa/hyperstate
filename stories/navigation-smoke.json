@@ -35,21 +35,21 @@
       "url": "/orders",
       "body": null,
       "status_code": 200,
-      "response_title": "Orders"
+      "response_title": "Order History"
     },
     {
       "method": "GET",
       "url": "/portfolio",
       "body": null,
       "status_code": 200,
-      "response_title": "Portfolio"
+      "response_title": "Portfolio Gallery"
     },
     {
       "method": "GET",
       "url": "/calendar",
       "body": null,
       "status_code": 200,
-      "response_title": "Calendar"
+      "response_title": "Calendar — Week of March 16, 2026"
     },
     {
       "method": "GET",

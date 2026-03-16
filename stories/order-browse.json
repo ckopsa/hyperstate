@@ -7,14 +7,14 @@
       "url": "/orders",
       "body": null,
       "status_code": 200,
-      "response_title": "Orders"
+      "response_title": "Order History"
     },
     {
       "method": "GET",
       "url": "/orders/ORD-001",
       "body": null,
       "status_code": 200,
-      "response_title": "Order ORD-001"
+      "response_title": "Order #ORD-001"
     }
   ],
   "created_at": "2026-03-16T17:00:00"

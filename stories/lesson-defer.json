@@ -21,7 +21,7 @@
       "url": "/lessons/LES-001/defer",
       "body": {},
       "status_code": 200,
-      "response_title": "Addition and Subtraction"
+      "response_title": "Daily Dashboard"
     },
     {
       "method": "GET",
