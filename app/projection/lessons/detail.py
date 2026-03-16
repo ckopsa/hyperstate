@@ -1,34 +1,70 @@
+import os
+from typing import List
+
 from app.domain.lessons.aggregate import Lesson
+from app.domain.lessons.entities import PortfolioPhoto
 from app.domain.lessons.states import LessonState
-from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
+from app.hyperstate.display import PropertyItem
+from app.hyperstate.fields import FileField, FieldOption, MultiSelectField, SelectField, TextField, UrlField
 from app.hyperstate.flash import Flash
 from app.hyperstate.nav import NavLink
+from app.hyperstate.response import ActorContext, HyperStateResponse, ViewContext
 from app.hyperstate.sections import (
-    PropertiesSection, ActionSection, ActionCondition,
-    ListSection, ColumnDef, ListItem, Section,
+    ActionCondition,
+    ActionSection,
+    ColumnDef,
+    EmptySection,
+    GroupSection,
+    ListItem,
+    ListSection,
+    PropertiesSection,
+    Section,
 )
-from app.hyperstate.fields import SelectField, TextField, UrlField, FieldOption
-from app.hyperstate.display import PropertyItem
+
+_UPLOAD_URL_PREFIX = "/uploads/portfolio"
+
+_TAG_OPTIONS = [
+    FieldOption(value="art", label="Art"),
+    FieldOption(value="writing", label="Writing"),
+    FieldOption(value="math-work", label="Math Work"),
+    FieldOption(value="science-experiment", label="Science Experiment"),
+    FieldOption(value="project", label="Project"),
+]
 
 
 class LessonDetailProjection:
-    def __init__(self, lesson: Lesson, actor: ActorContext):
+    def __init__(self, lesson: Lesson, actor: ActorContext, photos: list[PortfolioPhoto] | None = None):
         self.lesson = lesson
         self.actor = actor
+        self.photos = photos or []
 
     def build(self, flash: Flash | None = None) -> HyperStateResponse:
         l = self.lesson
-        sections: list[Section] = [self._properties_section()]
 
+        left_sections: List[Section] = [self._properties_section()]
         if action := self._start_section():
-            sections.append(action)
+            left_sections.append(action)
         if action := self._complete_section():
-            sections.append(action)
+            left_sections.append(action)
         if action := self._reset_section():
-            sections.append(action)
+            left_sections.append(action)
+        left_sections.append(self._resources_section())
+        left_sections.append(self._add_resource_section())
 
-        sections.append(self._resources_section())
-        sections.append(self._add_resource_section())
+        right_sections: List[Section] = [
+            self._portfolio_list_section(),
+            self._upload_section(),
+        ]
+
+        sections: List[Section] = [
+            GroupSection(
+                layout="sidebar",
+                sections=[
+                    GroupSection(layout="stack", sections=left_sections),
+                    GroupSection(layout="stack", sections=right_sections),
+                ],
+            )
+        ]
 
         return HyperStateResponse(
             view="detail",
@@ -45,6 +81,7 @@ class LessonDetailProjection:
                 NavLink(label="All Lessons", href="/lessons", rel="collection"),
                 NavLink(label="Subject", href=f"/subjects/{l.subject_id}", rel="related"),
                 NavLink(label="Student", href=f"/students/{l.student_id}", rel="related"),
+                NavLink(label="Portfolio Gallery", href="/portfolio", rel="related"),
             ],
             sections=sections,
         )
@@ -111,7 +148,6 @@ class LessonDetailProjection:
                 ColumnDef(key="url", label="URL"),
             ],
             items=items,
-            empty_message="No resources attached yet.",
         )
 
     def _add_resource_section(self) -> ActionSection:
@@ -144,6 +180,57 @@ class LessonDetailProjection:
                     label="URL",
                     required=True,
                     placeholder="https://...",
+                ),
+            ],
+        )
+
+    def _portfolio_list_section(self) -> ListSection | EmptySection:
+        if not self.photos:
+            return EmptySection(
+                title="No Student Work Yet",
+                description="Upload a photo to start building this lesson's portfolio.",
+            )
+        columns = [
+            ColumnDef(key="thumbnail", label="Photo", display="image"),
+            ColumnDef(key="caption", label="Caption"),
+            ColumnDef(key="uploaded_at", label="Date", display="datetime"),
+        ]
+        items = []
+        for p in self.photos:
+            stored_filename = os.path.basename(p.file_path)
+            img_url = f"{_UPLOAD_URL_PREFIX}/{stored_filename}"
+            items.append(ListItem(
+                href=f"/lessons/{self.lesson.id}/portfolio/{p.id}",
+                data={
+                    "thumbnail": img_url,
+                    "caption": p.caption or "—",
+                    "uploaded_at": p.uploaded_at.isoformat() if p.uploaded_at else "",
+                },
+            ))
+        return ListSection(title="Student Work", columns=columns, items=items)
+
+    def _upload_section(self) -> ActionSection:
+        return ActionSection(
+            key="upload-work",
+            label="Add Student Work",
+            method="POST",
+            href=f"/lessons/{self.lesson.id}/portfolio",
+            fields=[
+                FileField(
+                    name="photo",
+                    label="Photo",
+                    required=True,
+                    accept=["image/*"],
+                ),
+                TextField(
+                    name="caption",
+                    label="Caption",
+                    placeholder="What did they create?",
+                ),
+                MultiSelectField(
+                    name="tags",
+                    label="Tags",
+                    options=_TAG_OPTIONS,
                 ),
             ],
         )

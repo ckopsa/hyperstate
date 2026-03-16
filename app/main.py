@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 import os
 
 from app.hyperstate.middleware import HyperStateMiddleware
@@ -15,6 +16,7 @@ from app.web.students.options import router as students_options_router
 from app.web.subjects.routes import router as subjects_router
 from app.web.subjects.options import router as subjects_options_router
 from app.web.lessons.routes import router as lessons_router
+from app.web.portfolio.routes import router as portfolio_router
 from app.web.dashboard.routes import router as dashboard_router
 from app.web.calendar.routes import router as calendar_router
 from app.application.orders.cancel_order import OrderNotFound
@@ -27,6 +29,9 @@ from app.infrastructure.models.order_model import OrderRow, LineItemRow
 from app.infrastructure.models.student_model import StudentRow
 from app.infrastructure.models.subject_model import SubjectRow
 from app.infrastructure.models.lesson_model import LessonRow, LessonResourceRow  # noqa: F401
+from app.infrastructure.models.portfolio_photo_model import PortfolioPhotoRow  # noqa: F401
+
+_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "portfolio")
 
 app = FastAPI(title="HyperState Homeschool Planner", version="0.1.0")
 app.add_middleware(HyperStateMiddleware)
@@ -37,12 +42,16 @@ app.include_router(students_options_router)
 app.include_router(subjects_router)
 app.include_router(subjects_options_router)
 app.include_router(lessons_router)
+app.include_router(portfolio_router)
 app.include_router(dashboard_router)
 app.include_router(calendar_router)
 
 
 @app.on_event("startup")
 async def startup():
+    os.makedirs(_UPLOAD_DIR, exist_ok=True)
+    app.mount("/uploads/portfolio", StaticFiles(directory=_UPLOAD_DIR), name="portfolio-uploads")
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

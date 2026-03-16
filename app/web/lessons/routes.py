@@ -1,23 +1,28 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.hyperstate.response import HyperStateResponse, ActorContext
+from app.application.lessons.add_resource import AddResource
+from app.application.lessons.create_lesson import CreateLesson
+from app.application.lessons.delete_photo import DeletePhoto, PhotoNotFound
+from app.application.lessons.remove_resource import RemoveResource
+from app.application.lessons.transition_lesson import TransitionLesson
+from app.application.lessons.upload_photo import UploadPhoto
+from app.domain.lessons.errors import LessonNotFound
+from app.domain.lessons.states import LessonState
 from app.hyperstate.flash import Flash
+from app.hyperstate.response import ActorContext, HyperStateResponse
 from app.infrastructure.database import get_db
 from app.infrastructure.repositories.lesson_repo import LessonRepository
+from app.infrastructure.repositories.portfolio_photo_repo import PortfolioPhotoRepository
 from app.infrastructure.repositories.subject_repo import SubjectRepository
-from app.projection.lessons.list import LessonListProjection
-from app.projection.lessons.detail import LessonDetailProjection
 from app.projection.dashboard.view import DashboardProjection
-from app.application.lessons.create_lesson import CreateLesson
+from app.projection.lessons.detail import LessonDetailProjection
+from app.projection.lessons.list import LessonListProjection
+from app.projection.lessons.portfolio_photo_detail import PortfolioPhotoDetailProjection
 from app.application.lessons.defer_lesson import DeferLesson
-from app.application.lessons.transition_lesson import TransitionLesson
-from app.application.lessons.add_resource import AddResource
-from app.application.lessons.remove_resource import RemoveResource
-from app.domain.lessons.states import LessonState
 from app.web.deps import get_current_actor
 
 router = APIRouter(prefix="/lessons", tags=["lessons"])
@@ -79,7 +84,9 @@ async def get_lesson(
     lesson = await repo.get(lesson_id)
     if lesson is None:
         raise HTTPException(status_code=404, detail=f"Lesson {lesson_id} not found")
-    return LessonDetailProjection(lesson, actor).build()
+    photo_repo = PortfolioPhotoRepository(db)
+    photos = await photo_repo.list_by_lesson(lesson_id)
+    return LessonDetailProjection(lesson, actor, photos).build()
 
 
 @router.post("/{lesson_id}/start", response_model=HyperStateResponse)
@@ -169,6 +176,7 @@ async def remove_resource(
     )
 
 
+<<<<<<< HEAD
 @router.post("/{lesson_id}/defer", response_model=HyperStateResponse)
 async def defer_lesson(
     lesson_id: str,
@@ -177,3 +185,76 @@ async def defer_lesson(
 ):
     use_case = DeferLesson(db)
     return await use_case.execute(lesson_id, actor)
+=======
+@router.post("/{lesson_id}/portfolio", response_model=HyperStateResponse)
+async def upload_portfolio_photo(
+    lesson_id: str,
+    photo: UploadFile = File(...),
+    caption: str | None = Form(None),
+    tags: list[str] = Form(default=[]),
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    if not photo.content_type or not photo.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are accepted.")
+
+    file_content = await photo.read()
+    use_case = UploadPhoto(db)
+    _, returned_lesson_id = await use_case.execute(
+        lesson_id=lesson_id,
+        filename=photo.filename or "photo.jpg",
+        file_content=file_content,
+        mime_type=photo.content_type,
+        caption=caption,
+        tags=tags,
+        actor=actor,
+    )
+
+    lesson_repo = LessonRepository(db)
+    lesson = await lesson_repo.get(returned_lesson_id)
+    if lesson is None:
+        raise LessonNotFound(lesson_id)
+    photo_repo = PortfolioPhotoRepository(db)
+    photos = await photo_repo.list_by_lesson(returned_lesson_id)
+    return LessonDetailProjection(lesson, actor, photos).build(
+        flash=Flash(type="success", title="Photo uploaded successfully.")
+    )
+
+
+@router.get("/{lesson_id}/portfolio/{photo_id}", response_model=HyperStateResponse)
+async def get_portfolio_photo(
+    lesson_id: str,
+    photo_id: str,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    photo_repo = PortfolioPhotoRepository(db)
+    photo = await photo_repo.get(photo_id)
+    if photo is None or photo.lesson_id != lesson_id:
+        raise HTTPException(status_code=404, detail=f"Photo {photo_id} not found")
+    return PortfolioPhotoDetailProjection(photo, actor).build()
+
+
+@router.post("/{lesson_id}/portfolio/{photo_id}/delete", response_model=HyperStateResponse)
+async def delete_portfolio_photo(
+    lesson_id: str,
+    photo_id: str,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    use_case = DeletePhoto(db)
+    try:
+        returned_lesson_id = await use_case.execute(photo_id)
+    except PhotoNotFound:
+        raise HTTPException(status_code=404, detail=f"Photo {photo_id} not found")
+
+    lesson_repo = LessonRepository(db)
+    lesson = await lesson_repo.get(returned_lesson_id)
+    if lesson is None:
+        raise LessonNotFound(returned_lesson_id)
+    photo_repo = PortfolioPhotoRepository(db)
+    photos = await photo_repo.list_by_lesson(returned_lesson_id)
+    return LessonDetailProjection(lesson, actor, photos).build(
+        flash=Flash(type="info", title="Photo deleted.")
+    )
+>>>>>>> 07fe41c (feat: add portfolio photo upload to lessons (hyp-vk3))
