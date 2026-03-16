@@ -15,6 +15,7 @@ from app.web.students.options import router as students_options_router
 from app.web.subjects.routes import router as subjects_router
 from app.web.subjects.options import router as subjects_options_router
 from app.web.lessons.routes import router as lessons_router
+from app.web.dashboard.routes import router as dashboard_router
 from app.application.orders.cancel_order import OrderNotFound
 from app.domain.students.errors import StudentNotFound
 from app.domain.subjects.errors import SubjectNotFound
@@ -35,6 +36,7 @@ app.include_router(students_options_router)
 app.include_router(subjects_router)
 app.include_router(subjects_options_router)
 app.include_router(lessons_router)
+app.include_router(dashboard_router)
 
 
 @app.on_event("startup")
@@ -129,9 +131,37 @@ async def startup():
             await session.commit()
 
 
-@app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard():
-    return HTMLResponse("<h1>Dashboard</h1><p>Navigate to /students, /subjects, or /lessons</p>")
+@app.get("/reports/instruction-days", response_model=HyperStateResponse)
+async def reports_instruction_days():
+    from app.infrastructure.database import async_session
+    from app.infrastructure.repositories.lesson_repo import LessonRepository
+    from app.hyperstate.response import ViewContext, ActorContext
+    from app.hyperstate.sections import SummarySection, SummaryItem
+
+    async with async_session() as session:
+        repo = LessonRepository(session)
+        instruction_days = await repo.count_instruction_days()
+
+    return HyperStateResponse(
+        view="report",
+        title="Instruction Days",
+        self_="/reports/instruction-days",
+        context=ViewContext(
+            domain="reports",
+            aggregate="instruction-days",
+            state="overview",
+            actor=ActorContext(id="system", name="System", roles=[]),
+        ),
+        nav=[NavLink(label="Dashboard", href="/dashboard", rel="parent")],
+        sections=[
+            SummarySection(
+                items=[
+                    SummaryItem(label="Instruction Days Completed", value=instruction_days, display="number"),
+                    SummaryItem(label="Target", value=180, display="number"),
+                ]
+            )
+        ],
+    )
 
 
 @app.get("/", response_class=HTMLResponse)
