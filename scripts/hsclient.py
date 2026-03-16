@@ -158,7 +158,10 @@ def print_nav(nav: list[dict], start_index: int = 0) -> list[dict]:
     print(_bold("  Navigation:"))
     for i, link in enumerate(nav):
         rel = f" ({link['rel']})" if link.get("rel") else ""
-        print(f"    [{start_index + i}] ← {link['label']}{_dim(rel)}  →  {_dim(link['href'])}")
+        if link.get("rel") == "download":
+            print(f"    [{start_index + i}] ⬇ {link['label']}{_dim(rel)}  →  {_dim(link['href'])}")
+        else:
+            print(f"    [{start_index + i}] ← {link['label']}{_dim(rel)}  →  {_dim(link['href'])}")
     return nav
 
 
@@ -505,8 +508,23 @@ class HSClient:
         try:
             data = resp.json()
         except Exception:
-            print(_red(f"  Non-JSON response ({resp.status_code}): {resp.text[:200]}"), file=sys.stderr)
-            return None
+            if resp.status_code < 400 and resp.headers.get("Content-Type") in ("application/pdf", "text/csv"):
+                # Handle file downloads gracefully during tests
+                filename = url.split("/")[-1]
+                content_disp = resp.headers.get("Content-Disposition", "")
+                if "filename=" in content_disp:
+                    filename = content_disp.split("filename=")[-1].strip('"').strip("'")
+
+                data = {
+                    "title": "File Download",
+                    "_download": True,
+                    "filename": filename,
+                    "content_type": resp.headers.get("Content-Type"),
+                    "size": len(resp.content)
+                }
+            else:
+                print(_red(f"  Non-JSON response ({resp.status_code}): {resp.text[:200]}"), file=sys.stderr)
+                return None
 
         # Record step
         if self.story is not None:
@@ -711,9 +729,30 @@ def interactive_loop(hs: HSClient, start_href: str = "/") -> None:
                 kind = item.get("_kind")
 
                 if kind == "nav" or kind == "clickable":
-                    result = hs.navigate(item["href"])
-                    if result:
-                        data = result
+                    if kind == "nav" and item.get("rel") == "download":
+                        href = item["href"]
+                        print(f"  {_dim(f'Downloading {href}...')}")
+                        url = hs.resolve_url(href)
+                        try:
+                            # Use httpx.get with stream to save memory, or just normal get
+                            resp = hs.client.get(url)
+                            if resp.status_code < 400:
+                                filename = href.split("/")[-1]
+                                content_disp = resp.headers.get("Content-Disposition", "")
+                                if "filename=" in content_disp:
+                                    filename = content_disp.split("filename=")[-1].strip('"').strip("'")
+
+                                path = Path(filename)
+                                path.write_bytes(resp.content)
+                                print(_green(f"  Downloaded {len(resp.content)} bytes to {path}"))
+                            else:
+                                print(_red(f"  Download failed with HTTP {resp.status_code}"))
+                        except Exception as e:
+                            print(_red(f"  Download error: {e}"))
+                    else:
+                        result = hs.navigate(item["href"])
+                        if result:
+                            data = result
                 elif kind == "action":
                     fields = item.get("fields", [])
                     condition = item.get("condition")
@@ -860,8 +899,22 @@ def replay_story(path: Path, until: int | None = None, base_url_override: str | 
     data: dict | None = None
     last_step = 0
     for i, step in enumerate(story.steps[:stop_at]):
-        label = f"  [{i + 1}/{stop_at}] {step.method} {step.url}"
-        data = hs.fetch(step.url, step.method, step.body)
+        url = step.url
+        if url.startswith("nav:") and data is not None:
+            rel = url[4:]
+            nav = data.get("nav", [])
+            for link in nav:
+                if link.get("rel") == rel:
+                    url = link["href"]
+                    break
+            else:
+                print(_red(f"FAIL: Could not resolve dynamic nav link '{url}' from previous response."))
+                ok = False
+                last_step = i
+                break
+
+        label = f"  [{i + 1}/{stop_at}] {step.method} {url}"
+        data = hs.fetch(url, step.method, step.body)
 
         if data is None:
             print(f"{_red('FAIL')} {label}")
