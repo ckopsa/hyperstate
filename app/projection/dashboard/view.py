@@ -147,6 +147,7 @@ class DashboardProjection:
                 NavLink(label="Calendar", href="/calendar", rel="section"),
                 NavLink(label="Students", href="/students", rel="section"),
                 NavLink(label="Subjects", href="/subjects", rel="section"),
+                NavLink(label="Curricula", href="/curricula", rel="section"),
                 NavLink(label="Reports", href="/reports", rel="section"),
             ],
             sections=sections,

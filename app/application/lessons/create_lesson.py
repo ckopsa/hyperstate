@@ -15,7 +15,7 @@ class CreateLesson:
         self.repo = LessonRepository(session)
         self.session = session
 
-    async def execute(
+    async def create_lesson_entity(
         self,
         subject_id: str,
         student_id: str,
@@ -23,8 +23,7 @@ class CreateLesson:
         description: str | None,
         scheduled_date: date | None,
         time_slot: str,
-        actor: ActorContext,
-    ) -> HyperStateResponse:
+    ) -> Lesson:
         lesson_id = f"LES-{uuid.uuid4().hex[:6].upper()}"
         lesson = Lesson.create(
             id=lesson_id,
@@ -36,6 +35,26 @@ class CreateLesson:
             time_slot=time_slot,
         )
         await self.repo.save(lesson)
+        return lesson
+
+    async def execute(
+        self,
+        subject_id: str,
+        student_id: str,
+        title: str,
+        description: str | None,
+        scheduled_date: date | None,
+        time_slot: str,
+        actor: ActorContext,
+    ) -> HyperStateResponse:
+        lesson = await self.create_lesson_entity(
+            subject_id=subject_id,
+            student_id=student_id,
+            title=title,
+            description=description,
+            scheduled_date=scheduled_date,
+            time_slot=time_slot,
+        )
         await self.session.commit()
 
         return LessonDetailProjection(lesson, actor).build(

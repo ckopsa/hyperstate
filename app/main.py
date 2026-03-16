@@ -18,9 +18,11 @@ from app.web.portfolio.routes import router as portfolio_router
 from app.web.dashboard.routes import router as dashboard_router
 from app.web.calendar.routes import router as calendar_router
 from app.web.reports.routes import router as reports_router
+from app.web.curricula.routes import router as curricula_router
 from app.domain.students.errors import StudentNotFound
 from app.domain.subjects.errors import SubjectNotFound, SubjectError
 from app.domain.lessons.errors import LessonNotFound
+from app.domain.curricula.errors import CurriculumNotFound
 
 from app.infrastructure.database import engine, Base, async_session
 from app.infrastructure.models.student_model import StudentRow
@@ -28,6 +30,7 @@ from app.infrastructure.models.subject_model import SubjectRow
 from app.infrastructure.models.lesson_model import LessonRow, LessonResourceRow  # noqa: F401
 from app.infrastructure.models.portfolio_photo_model import PortfolioPhotoRow  # noqa: F401
 from app.infrastructure.models.instruction_day_model import InstructionDayRow  # noqa: F401
+from app.infrastructure.models.curriculum_model import CurriculumRow, CurriculumItemRow, CurriculumItemResourceRow  # noqa: F401
 
 _UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "portfolio")
 
@@ -42,6 +45,7 @@ app.include_router(portfolio_router)
 app.include_router(dashboard_router)
 app.include_router(calendar_router)
 app.include_router(reports_router)
+app.include_router(curricula_router)
 
 
 @app.on_event("startup")
@@ -165,5 +169,16 @@ async def lesson_not_found_handler(request, exc: LessonNotFound):
         self_=str(request.url.path),
         sections=[ContentSection(body=f"Lesson {exc.lesson_id} was not found.", format="plain")],
         nav=[NavLink(label="All Lessons", href="/lessons", rel="collection")],
+    )
+    return JSONResponse(status_code=404, content=response.model_dump(by_alias=True, exclude_none=True))
+
+@app.exception_handler(CurriculumNotFound)
+async def curriculum_not_found_handler(request, exc: CurriculumNotFound):
+    response = HyperStateResponse(
+        view="error",
+        title="Not Found",
+        self_=str(request.url.path),
+        sections=[ContentSection(body=f"Curriculum {exc.curriculum_id} was not found.", format="plain")],
+        nav=[NavLink(label="All Curricula", href="/curricula", rel="collection")],
     )
     return JSONResponse(status_code=404, content=response.model_dump(by_alias=True, exclude_none=True))
