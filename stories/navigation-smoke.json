@@ -32,13 +32,6 @@
     },
     {
       "method": "GET",
-      "url": "/orders",
-      "body": null,
-      "status_code": 200,
-      "response_title": "Order History"
-    },
-    {
-      "method": "GET",
       "url": "/portfolio",
       "body": null,
       "status_code": 200,

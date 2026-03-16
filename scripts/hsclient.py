@@ -932,7 +932,7 @@ class CrawlResult:
     protocol_errors: list[dict] = field(default_factory=list)
 
 
-def crawl(base_url: str, start: str = "/orders") -> CrawlResult:
+def crawl(base_url: str, start: str = "/students") -> CrawlResult:
     """Crawl the app following all nav links. Report issues."""
     hs = HSClient(base_url)
     result = CrawlResult()
@@ -1093,7 +1093,7 @@ def main() -> None:
         """),
     )
     parser.add_argument("--base-url", default=DEFAULT_BASE, help=f"Base URL (default: {DEFAULT_BASE})")
-    parser.add_argument("--start", default="/orders", help="Starting path (default: /orders)")
+    parser.add_argument("--start", default="/students", help="Starting path (default: /students)")
     parser.add_argument("--record", metavar="NAME", help="Record interactions as a named story")
     parser.add_argument("--replay", metavar="FILE", help="Replay a saved story file")
     parser.add_argument("--until", type=int, metavar="N", help="Stop replay at step N")

@@ -9,8 +9,6 @@ from app.hyperstate.middleware import HyperStateMiddleware
 from app.hyperstate.response import HyperStateResponse
 from app.hyperstate.sections import ContentSection
 from app.hyperstate.nav import NavLink
-from app.web.orders.routes import router as orders_router
-from app.web.orders.options import router as orders_options_router
 from app.web.students.routes import router as students_router
 from app.web.students.options import router as students_options_router
 from app.web.subjects.routes import router as subjects_router
@@ -20,13 +18,11 @@ from app.web.portfolio.routes import router as portfolio_router
 from app.web.dashboard.routes import router as dashboard_router
 from app.web.calendar.routes import router as calendar_router
 from app.web.reports.routes import router as reports_router
-from app.application.orders.cancel_order import OrderNotFound
 from app.domain.students.errors import StudentNotFound
 from app.domain.subjects.errors import SubjectNotFound, SubjectError
 from app.domain.lessons.errors import LessonNotFound
 
 from app.infrastructure.database import engine, Base, async_session
-from app.infrastructure.models.order_model import OrderRow, LineItemRow
 from app.infrastructure.models.student_model import StudentRow
 from app.infrastructure.models.subject_model import SubjectRow
 from app.infrastructure.models.lesson_model import LessonRow, LessonResourceRow  # noqa: F401
@@ -37,8 +33,6 @@ _UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "portfoli
 
 app = FastAPI(title="HyperState Homeschool Planner", version="0.1.0")
 app.add_middleware(HyperStateMiddleware)
-app.include_router(orders_router)
-app.include_router(orders_options_router)
 app.include_router(students_router)
 app.include_router(students_options_router)
 app.include_router(subjects_router)
@@ -57,32 +51,6 @@ async def startup():
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-    # Seed sample order if none exists
-    async with async_session() as session:
-        from sqlalchemy import select
-        stmt = select(OrderRow).limit(1)
-        result = await session.execute(stmt)
-        if not result.scalar_one_or_none():
-            from decimal import Decimal
-            from datetime import datetime, UTC
-            order = OrderRow(
-                id="ORD-001",
-                customer_id="CUST-7",
-                state="pending",
-                placed_at=datetime.now(UTC),
-                items=[
-                    LineItemRow(
-                        product_id="PROD-1",
-                        product_name="Standard Widget",
-                        quantity=2,
-                        unit_price=Decimal("25.00"),
-                        currency="USD"
-                    )
-                ]
-            )
-            session.add(order)
-            await session.commit()
 
     # Seed default subjects if none exist
     async with async_session() as session:
@@ -151,26 +119,6 @@ async def get_client():
     path = os.path.join(os.path.dirname(__file__), "web", "client.html")
     with open(path, "r") as f:
         return f.read()
-
-
-@app.exception_handler(OrderNotFound)
-async def order_not_found_handler(request, exc: OrderNotFound):
-    response = HyperStateResponse(
-        view="error",
-        title="Not Found",
-        self_=str(request.url.path),
-        sections=[
-            ContentSection(
-                body=f"Order {exc.order_id} was not found.",
-                format="plain",
-            ),
-        ],
-        nav=[NavLink(label="All Orders", href="/orders", rel="collection")],
-    )
-    return JSONResponse(
-        status_code=404,
-        content=response.model_dump(by_alias=True, exclude_none=True),
-    )
 
 
 @app.exception_handler(StudentNotFound)

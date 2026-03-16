@@ -7,13 +7,13 @@
 
 | Story | Steps | Result | Notes |
 |-------|-------|--------|-------|
-| navigation-smoke | 8 | PASS | Fixed expected response titles |
+| navigation-smoke | 7 | PASS | Fixed expected response titles; removed orders step (orders domain removed) |
 | student-lesson-complete | 7 | PASS | |
 | subject-browse | 5 | PASS | Removed missing `subject-list` section key and fixed response titles |
 | lesson-lifecycle | - | SKIP | File not present |
 | lesson-defer | 4 | PASS | Fixed server `500 Internal Server Error` and expected response titles |
 | lesson-resources | 4 | PASS | |
-| order-browse | 2 | PASS | Fixed expected response titles |
+| order-browse | - | REMOVED | Orders domain removed |
 | dashboard-defer-all | 4 | PASS | Fixed expected response title |
 | reports-instruction-days | 3 | PASS | |
 
