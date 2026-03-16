@@ -65,6 +65,23 @@ class LessonRepository:
         rows = (await self.session.execute(stmt)).scalars().all()
         return [self._to_domain(r) for r in rows]
 
+    async def list_by_date_range(
+        self,
+        start: date,
+        end: date,
+        student_id: str | None = None,
+    ) -> list[Lesson]:
+        stmt = (
+            select(LessonRow)
+            .where(LessonRow.scheduled_date >= start)
+            .where(LessonRow.scheduled_date <= end)
+            .order_by(LessonRow.scheduled_date, LessonRow.time_slot, LessonRow.title)
+        )
+        if student_id:
+            stmt = stmt.where(LessonRow.student_id == student_id)
+        rows = (await self.session.execute(stmt)).scalars().all()
+        return [self._to_domain(r) for r in rows]
+
     async def save(self, lesson: Lesson) -> None:
         row = await self.session.get(LessonRow, lesson.id)
         if row is None:

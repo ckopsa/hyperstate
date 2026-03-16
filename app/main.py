@@ -16,6 +16,7 @@ from app.web.subjects.routes import router as subjects_router
 from app.web.subjects.options import router as subjects_options_router
 from app.web.lessons.routes import router as lessons_router
 from app.web.dashboard.routes import router as dashboard_router
+from app.web.calendar.routes import router as calendar_router
 from app.application.orders.cancel_order import OrderNotFound
 from app.domain.students.errors import StudentNotFound
 from app.domain.subjects.errors import SubjectNotFound
@@ -37,6 +38,7 @@ app.include_router(subjects_router)
 app.include_router(subjects_options_router)
 app.include_router(lessons_router)
 app.include_router(dashboard_router)
+app.include_router(calendar_router)
 
 
 @app.on_event("startup")
