@@ -46,7 +46,7 @@ class InstructionDaysProjection:
             flash=flash,
             nav=[
                 NavLink(label="Dashboard", href="/dashboard", rel="parent"),
-                NavLink(label="Export PDF", href="/reports/instruction-days/export", rel="related"),
+                NavLink(label="Export PDF", href="/reports/instruction-days/export", rel="download", type="application/pdf"),
             ],
             sections=sections,
         )
