@@ -1,11 +1,12 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, UTC
 
 from app.domain.shared.aggregate import AggregateRoot
-from .states import LessonState, next_state, InvalidTransition, TRANSITIONS
+from .states import LessonState, next_state, TRANSITIONS
 from .errors import LessonError
 from .events import LessonCreated, LessonStarted, LessonCompleted, LessonReset
+from .entities import LessonResource, ResourceType
 
 
 @dataclass(kw_only=True)
@@ -22,6 +23,7 @@ class Lesson(AggregateRoot):
     state: LessonState = LessonState.PENDING
     completed_at: datetime | None = None
     completed_by: str | None = None
+    resources: list[LessonResource] = field(default_factory=list)
 
     @classmethod
     def create(
@@ -66,6 +68,28 @@ class Lesson(AggregateRoot):
         self.completed_at = None
         self.completed_by = None
         self._events.append(LessonReset(lesson_id=self.id))
+
+    def add_resource(self, resource_id: str, resource_type: ResourceType, title: str, url: str) -> LessonResource:
+        if not title.strip():
+            raise LessonError("Resource title cannot be empty.")
+        if not url.strip():
+            raise LessonError("Resource URL cannot be empty.")
+        resource = LessonResource(
+            id=resource_id,
+            lesson_id=self.id,
+            resource_type=resource_type,
+            title=title,
+            url=url,
+        )
+        self.resources.append(resource)
+        return resource
+
+    def remove_resource(self, resource_id: str) -> None:
+        for i, r in enumerate(self.resources):
+            if r.id == resource_id:
+                del self.resources[i]
+                return
+        raise LessonError(f"Resource {resource_id} not found on this lesson.")
 
     def available_actions(self) -> set[str]:
         return set(TRANSITIONS.get(self.state, {}).keys())

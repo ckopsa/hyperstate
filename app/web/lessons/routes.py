@@ -14,6 +14,8 @@ from app.projection.lessons.detail import LessonDetailProjection
 from app.projection.dashboard.view import DashboardProjection
 from app.application.lessons.create_lesson import CreateLesson
 from app.application.lessons.transition_lesson import TransitionLesson
+from app.application.lessons.add_resource import AddResource
+from app.application.lessons.remove_resource import RemoveResource
 from app.domain.lessons.states import LessonState
 from app.web.deps import get_current_actor
 
@@ -27,6 +29,12 @@ class CreateLessonBody(BaseModel):
     description: str | None = None
     scheduled_date: date | None = None
     time_slot: str = "morning"
+
+
+class AddResourceBody(BaseModel):
+    resource_type: str
+    title: str
+    url: str
 
 
 @router.get("", response_model=HyperStateResponse)
@@ -126,3 +134,35 @@ async def reset_lesson(
 ):
     use_case = TransitionLesson(db)
     return await use_case.execute(lesson_id, "reset", actor)
+
+
+@router.post("/{lesson_id}/resources", response_model=HyperStateResponse)
+async def add_resource(
+    lesson_id: str,
+    body: AddResourceBody,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    use_case = AddResource(db)
+    return await use_case.execute(
+        lesson_id=lesson_id,
+        resource_type=body.resource_type,  # type: ignore[arg-type]
+        title=body.title,
+        url=body.url,
+        actor=actor,
+    )
+
+
+@router.post("/{lesson_id}/resources/{resource_id}/remove", response_model=HyperStateResponse)
+async def remove_resource(
+    lesson_id: str,
+    resource_id: str,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    use_case = RemoveResource(db)
+    return await use_case.execute(
+        lesson_id=lesson_id,
+        resource_id=resource_id,
+        actor=actor,
+    )

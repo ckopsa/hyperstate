@@ -26,7 +26,7 @@ from app.infrastructure.database import engine, Base, async_session
 from app.infrastructure.models.order_model import OrderRow, LineItemRow
 from app.infrastructure.models.student_model import StudentRow
 from app.infrastructure.models.subject_model import SubjectRow
-from app.infrastructure.models.lesson_model import LessonRow
+from app.infrastructure.models.lesson_model import LessonRow, LessonResourceRow  # noqa: F401
 
 app = FastAPI(title="HyperState Homeschool Planner", version="0.1.0")
 app.add_middleware(HyperStateMiddleware)

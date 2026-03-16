@@ -5,7 +5,9 @@ from app.hyperstate.flash import Flash
 from app.hyperstate.nav import NavLink
 from app.hyperstate.sections import (
     PropertiesSection, ActionSection, ActionCondition,
+    ListSection, ColumnDef, ListItem, Section,
 )
+from app.hyperstate.fields import SelectField, TextField, UrlField, FieldOption
 from app.hyperstate.display import PropertyItem
 
 
@@ -16,7 +18,7 @@ class LessonDetailProjection:
 
     def build(self, flash: Flash | None = None) -> HyperStateResponse:
         l = self.lesson
-        sections = [self._properties_section()]
+        sections: list[Section] = [self._properties_section()]
 
         if action := self._start_section():
             sections.append(action)
@@ -24,6 +26,9 @@ class LessonDetailProjection:
             sections.append(action)
         if action := self._reset_section():
             sections.append(action)
+
+        sections.append(self._resources_section())
+        sections.append(self._add_resource_section())
 
         return HyperStateResponse(
             view="detail",
@@ -75,6 +80,73 @@ class LessonDetailProjection:
                 variant="success",
             ))
         return PropertiesSection(title="Lesson Details", data=data)
+
+    def _resources_section(self) -> ListSection:
+        lesson = self.lesson
+        items = [
+            ListItem(
+                data={
+                    "type": r.resource_type,
+                    "title": r.title,
+                    "url": r.url,
+                },
+                actions=[
+                    ActionSection(
+                        key="remove-resource",
+                        label="Remove",
+                        method="POST",
+                        href=f"/lessons/{lesson.id}/resources/{r.id}/remove",
+                        style="danger",
+                        confirm="Remove this resource?",
+                    )
+                ],
+            )
+            for r in lesson.resources
+        ]
+        return ListSection(
+            title="Resources",
+            columns=[
+                ColumnDef(key="type", label="Type"),
+                ColumnDef(key="title", label="Title"),
+                ColumnDef(key="url", label="URL"),
+            ],
+            items=items,
+            empty_message="No resources attached yet.",
+        )
+
+    def _add_resource_section(self) -> ActionSection:
+        lesson = self.lesson
+        return ActionSection(
+            key="add-resource",
+            label="Add Resource",
+            method="POST",
+            href=f"/lessons/{lesson.id}/resources",
+            style="default",
+            fields=[
+                SelectField(
+                    name="resource_type",
+                    label="Type",
+                    required=True,
+                    options=[
+                        FieldOption(value="pdf", label="PDF"),
+                        FieldOption(value="video", label="Video"),
+                        FieldOption(value="link", label="Link"),
+                    ],
+                ),
+                TextField(
+                    name="title",
+                    label="Title",
+                    required=True,
+                    placeholder="Resource title",
+                ),
+                UrlField(
+                    name="url",
+                    label="URL",
+                    required=True,
+                    placeholder="https://...",
+                ),
+            ],
+        )
 
     def _start_section(self) -> ActionSection | None:
         l = self.lesson

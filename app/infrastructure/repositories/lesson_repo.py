@@ -2,10 +2,12 @@ from datetime import date
 
 from sqlalchemy import select, func, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.domain.lessons.aggregate import Lesson
+from app.domain.lessons.entities import LessonResource
 from app.domain.lessons.states import LessonState
-from app.infrastructure.models.lesson_model import LessonRow
+from app.infrastructure.models.lesson_model import LessonRow, LessonResourceRow
 
 _SLOT_ORDER = {"morning": 0, "afternoon": 1, "evening": 2}
 
@@ -15,7 +17,12 @@ class LessonRepository:
         self.session = session
 
     async def get(self, lesson_id: str) -> Lesson | None:
-        row = await self.session.get(LessonRow, lesson_id)
+        stmt = (
+            select(LessonRow)
+            .where(LessonRow.id == lesson_id)
+            .options(selectinload(LessonRow.resources))
+        )
+        row = (await self.session.execute(stmt)).scalar_one_or_none()
         if row is None:
             return None
         return self._to_domain(row)
@@ -25,6 +32,7 @@ class LessonRepository:
             select(LessonRow)
             .where(LessonRow.scheduled_date == scheduled_date)
             .order_by(LessonRow.time_slot, LessonRow.title)
+            .options(selectinload(LessonRow.resources))
         )
         rows = (await self.session.execute(stmt)).scalars().all()
         lessons = [self._to_domain(r) for r in rows]
@@ -37,6 +45,7 @@ class LessonRepository:
             .where(LessonRow.state == LessonState.COMPLETED)
             .order_by(LessonRow.completed_at.desc())
             .limit(limit)
+            .options(selectinload(LessonRow.resources))
         )
         rows = (await self.session.execute(stmt)).scalars().all()
         return [self._to_domain(r) for r in rows]
@@ -55,7 +64,11 @@ class LessonRepository:
         subject_id: str | None = None,
         state: str | None = None,
     ) -> list[Lesson]:
-        stmt = select(LessonRow).order_by(LessonRow.scheduled_date, LessonRow.title)
+        stmt = (
+            select(LessonRow)
+            .order_by(LessonRow.scheduled_date, LessonRow.title)
+            .options(selectinload(LessonRow.resources))
+        )
         if student_id:
             stmt = stmt.where(LessonRow.student_id == student_id)
         if subject_id:
@@ -76,6 +89,7 @@ class LessonRepository:
             .where(LessonRow.scheduled_date >= start)
             .where(LessonRow.scheduled_date <= end)
             .order_by(LessonRow.scheduled_date, LessonRow.time_slot, LessonRow.title)
+            .options(selectinload(LessonRow.resources))
         )
         if student_id:
             stmt = stmt.where(LessonRow.student_id == student_id)
@@ -83,7 +97,12 @@ class LessonRepository:
         return [self._to_domain(r) for r in rows]
 
     async def save(self, lesson: Lesson) -> None:
-        row = await self.session.get(LessonRow, lesson.id)
+        stmt = (
+            select(LessonRow)
+            .where(LessonRow.id == lesson.id)
+            .options(selectinload(LessonRow.resources))
+        )
+        row = (await self.session.execute(stmt)).scalar_one_or_none()
         if row is None:
             row = LessonRow(id=lesson.id)
             self.session.add(row)
@@ -96,9 +115,38 @@ class LessonRepository:
         row.state = lesson.state.value
         row.completed_at = lesson.completed_at
         row.completed_by = lesson.completed_by
+
+        # Sync resources: delete removed, add new
+        existing_ids = {r.id for r in row.resources}
+        domain_ids = {r.id for r in lesson.resources}
+
+        # Remove deleted resources
+        row.resources = [r for r in row.resources if r.id in domain_ids]
+
+        # Add new resources
+        for resource in lesson.resources:
+            if resource.id not in existing_ids:
+                row.resources.append(LessonResourceRow(
+                    id=resource.id,
+                    lesson_id=lesson.id,
+                    resource_type=resource.resource_type,
+                    title=resource.title,
+                    url=resource.url,
+                ))
+
         await self.session.flush()
 
     def _to_domain(self, row: LessonRow) -> Lesson:
+        resources = [
+            LessonResource(
+                id=r.id,
+                lesson_id=r.lesson_id,
+                resource_type=r.resource_type,  # type: ignore[arg-type]
+                title=r.title,
+                url=r.url,
+            )
+            for r in row.resources
+        ]
         return Lesson(
             id=row.id,
             subject_id=row.subject_id,
@@ -110,4 +158,5 @@ class LessonRepository:
             state=LessonState(row.state),
             completed_at=row.completed_at,
             completed_by=row.completed_by,
+            resources=resources,
         )
