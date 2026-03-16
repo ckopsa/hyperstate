@@ -613,10 +613,17 @@ function renderView(data) {
   if (data.nav && data.nav.length) {
     const navEl = h('div', { class: 'nav-links' });
     for (const link of data.nav) {
-      navEl.appendChild(h('button', {
-        class: 'nav-link',
-        onClick: () => navigate(link.href),
-      }, link.label));
+      if (link.rel === 'download') {
+        navEl.appendChild(h('a', {
+          class: 'nav-link',
+          href: link.href,
+        }, link.label));
+      } else {
+        navEl.appendChild(h('button', {
+          class: 'nav-link',
+          onClick: () => navigate(link.href),
+        }, link.label));
+      }
     }
     app.appendChild(navEl);
   }

@@ -90,6 +90,75 @@ async def log_manual_day(
     )
 
 
+@router.get("/instruction-days/export")
+async def export_instruction_days(
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    repo = InstructionDayRepository(db)
+    days = await repo.list_all()
+    days.sort(key=lambda d: d.date)  # chronological order for the report
+
+    report_id = str(uuid.uuid4())
+    filename = f"instruction_days_{report_id}.pdf"
+    reports_dir = _ensure_reports_dir()
+    filepath = os.path.join(reports_dir, filename)
+
+    from fpdf import FPDF, XPos, YPos
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, "Instruction Days Report", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+
+    pdf.set_font("Helvetica", "", 11)
+    pdf.cell(0, 7, f"Generated: {datetime.now(UTC).strftime('%Y-%m-%d')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 7, f"Total Days Logged: {len(days)}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(5)
+
+    if not days:
+        pdf.set_font("Helvetica", "I", 11)
+        pdf.cell(0, 10, "No instruction days logged yet.", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    else:
+        pdf.set_font("Helvetica", "B", 10)
+        # Header
+        pdf.cell(30, 8, "Date", border=1)
+        pdf.cell(20, 8, "Lessons", border=1, align="C")
+        pdf.cell(60, 8, "Subjects Covered", border=1)
+        pdf.cell(0, 8, "Notes", border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+        pdf.set_font("Helvetica", "", 9)
+        for day in days:
+            date_str = day.date.isoformat()
+            lessons = str(day.lessons_completed or 0)
+            subjects = day.subjects_covered or ""
+            notes = day.notes or ""
+
+            # Ensure text fits or use multi_cell, but for simplicity we just truncate or let it run
+            # A more robust approach would use multi_cell to handle wrapping
+            # Let's truncate strings if they are too long just in case, or use a simple cell
+            subjects = subjects[:40] + "..." if len(subjects) > 40 else subjects
+
+            # Simple row
+            # To handle long notes, we can calculate the height needed, but sticking to simple cell
+            # if notes are short. Let's truncate notes to 50 chars for the simple row.
+            notes_trunc = notes[:50] + "..." if len(notes) > 50 else notes
+
+            pdf.cell(30, 7, date_str, border=1)
+            pdf.cell(20, 7, lessons, border=1, align="C")
+            pdf.cell(60, 7, subjects, border=1)
+            pdf.cell(0, 7, notes_trunc, border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+
+    pdf.output(filepath)
+
+    return FileResponse(
+        path=filepath,
+        media_type="application/pdf",
+        filename=filename,
+    )
+
+
 # ── Reports List ──────────────────────────────────────────────────────────────
 
 @router.get("", response_model=HyperStateResponse)
