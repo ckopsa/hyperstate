@@ -1,9 +1,11 @@
 from app.domain.lessons.aggregate import Lesson
+from app.domain.lessons.states import LessonState
 from app.domain.subjects.aggregate import Subject
 from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
+from app.hyperstate.flash import Flash
 from app.hyperstate.sections import (
     SummarySection, SummaryItem, ListSection, ColumnDef, ListItem,
-    TimelineSection, TimelineEvent, EmptySection,
+    TimelineSection, TimelineEvent, EmptySection, ActionSection,
 )
 from app.hyperstate.nav import NavLink
 
@@ -25,7 +27,7 @@ class DashboardProjection:
         self.subjects = subjects
         self.actor = actor
 
-    def build(self) -> HyperStateResponse:
+    def build(self, flash: Flash | None = None) -> HyperStateResponse:
         total_today = len(self.today_lessons)
         completed_today = sum(1 for l in self.today_lessons if l.state == "completed")
         year_progress = round(self.instruction_days / _SCHOOL_YEAR_DAYS, 4)
@@ -64,6 +66,15 @@ class DashboardProjection:
                             "lesson": l.title,
                             "status": l.state.value,
                         },
+                        actions=[] if l.state == LessonState.COMPLETED else [
+                            ActionSection(
+                                key="complete-task",
+                                label="Done!",
+                                method="POST",
+                                href=f"/lessons/{l.id}/complete",
+                                style="primary",
+                            )
+                        ],
                     )
                     for l in self.today_lessons
                 ],
@@ -100,6 +111,7 @@ class DashboardProjection:
                 state="overview",
                 actor=self.actor,
             ),
+            flash=flash,
             nav=[
                 NavLink(label="Calendar", href="/calendar", rel="section"),
                 NavLink(label="Subjects", href="/subjects", rel="section"),

@@ -68,6 +68,12 @@ class LessonDetailProjection:
                 key="completed_at", label="Completed At",
                 value=l.completed_at.isoformat(), display="datetime",
             ))
+        if l.completed_by:
+            data.append(PropertyItem(
+                key="completed_by", label="Completed By",
+                value=l.completed_by, display="badge",
+                variant="success",
+            ))
         return PropertiesSection(title="Lesson Details", data=data)
 
     def _start_section(self) -> ActionSection | None:
@@ -93,19 +99,30 @@ class LessonDetailProjection:
 
     def _complete_section(self) -> ActionSection | None:
         l = self.lesson
+        is_student = "student" in (self.actor.roles if self.actor else [])
+        label = "I finished this!" if is_student else "Mark Complete"
+        key = "mark-complete"
         match l.state:
             case LessonState.IN_PROGRESS:
                 return ActionSection(
-                    key="complete",
-                    label="Mark Complete",
+                    key=key,
+                    label=label,
                     method="POST",
                     href=f"/lessons/{l.id}/complete",
                     style="primary",
                 )
             case LessonState.PENDING:
+                if is_student:
+                    return ActionSection(
+                        key=key,
+                        label=label,
+                        method="POST",
+                        href=f"/lessons/{l.id}/complete",
+                        style="primary",
+                    )
                 return ActionSection(
-                    key="complete",
-                    label="Mark Complete",
+                    key=key,
+                    label=label,
                     method="POST",
                     href=f"/lessons/{l.id}/complete",
                     condition=ActionCondition(met=False, explain="Start the lesson before marking complete."),

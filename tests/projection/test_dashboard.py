@@ -120,6 +120,54 @@ class TestDashboardWithLessons:
         assert instr.href == "/reports/instruction-days"
 
 
+class TestDashboardInlineActions:
+    def test_pending_lesson_has_done_action(self, actor, subject, pending_lesson):
+        proj = DashboardProjection(
+            today_lessons=[pending_lesson],
+            recently_completed=[],
+            instruction_days=0,
+            subjects={"SUB-MATH": subject},
+            actor=actor,
+        )
+        view = proj.build()
+        schedule = next(s for s in view.sections if s.kind == "list")
+        item = schedule.items[0]
+        assert len(item.actions) == 1
+        action = item.actions[0]
+        assert action.key == "complete-task"
+        assert action.label == "Done!"
+        assert action.method == "POST"
+        assert action.href == f"/lessons/{pending_lesson.id}/complete"
+        assert action.style == "primary"
+
+    def test_completed_lesson_has_no_inline_action(self, actor, subject, completed_lesson):
+        proj = DashboardProjection(
+            today_lessons=[completed_lesson],
+            recently_completed=[completed_lesson],
+            instruction_days=1,
+            subjects={"SUB-MATH": subject},
+            actor=actor,
+        )
+        view = proj.build()
+        schedule = next(s for s in view.sections if s.kind == "list")
+        item = schedule.items[0]
+        assert item.actions == []
+
+    def test_flash_is_passed_through(self, actor, subject):
+        from app.hyperstate.flash import Flash
+        proj = DashboardProjection(
+            today_lessons=[],
+            recently_completed=[],
+            instruction_days=0,
+            subjects={},
+            actor=actor,
+        )
+        flash = Flash(type="success", title="Great job!", body="Done.")
+        view = proj.build(flash=flash)
+        assert view.flash is not None
+        assert view.flash.title == "Great job!"
+
+
 class TestDashboardEmpty:
     def test_empty_section_when_no_lessons(self, actor, subject):
         proj = DashboardProjection(
