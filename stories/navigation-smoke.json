@@ -1,0 +1,63 @@
+{
+  "name": "navigation-smoke",
+  "base_url": "http://localhost:8000",
+  "steps": [
+    {
+      "method": "GET",
+      "url": "/dashboard",
+      "body": null,
+      "status_code": 200,
+      "response_title": "Daily Dashboard"
+    },
+    {
+      "method": "GET",
+      "url": "/students",
+      "body": null,
+      "status_code": 200,
+      "response_title": "Students"
+    },
+    {
+      "method": "GET",
+      "url": "/subjects",
+      "body": null,
+      "status_code": 200,
+      "response_title": "Subjects"
+    },
+    {
+      "method": "GET",
+      "url": "/lessons",
+      "body": null,
+      "status_code": 200,
+      "response_title": "Lessons"
+    },
+    {
+      "method": "GET",
+      "url": "/orders",
+      "body": null,
+      "status_code": 200,
+      "response_title": "Orders"
+    },
+    {
+      "method": "GET",
+      "url": "/portfolio",
+      "body": null,
+      "status_code": 200,
+      "response_title": "Portfolio"
+    },
+    {
+      "method": "GET",
+      "url": "/calendar",
+      "body": null,
+      "status_code": 200,
+      "response_title": "Calendar"
+    },
+    {
+      "method": "GET",
+      "url": "/reports",
+      "body": null,
+      "status_code": 200,
+      "response_title": "Reports"
+    }
+  ],
+  "created_at": "2026-03-16T17:00:00"
+}
