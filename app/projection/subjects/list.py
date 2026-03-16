@@ -2,7 +2,8 @@ from typing import Iterable
 
 from app.domain.subjects.aggregate import Subject
 from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
-from app.hyperstate.sections import ListSection, ActionSection, ColumnDef, ListItem
+from app.hyperstate.flash import Flash
+from app.hyperstate.sections import Section, ListSection, ActionSection, EmptySection, ColumnDef, ListItem
 from app.hyperstate.fields import TextField, SelectField, TextareaField, FieldOption
 from app.hyperstate.nav import NavLink
 
@@ -36,11 +37,28 @@ class SubjectListProjection:
         self.subjects = list(subjects)
         self.actor = actor
 
-    def build(self) -> HyperStateResponse:
+    def build(self, flash: Flash | None = None) -> HyperStateResponse:
+        sections: list[Section] = [self._create_section()]
+
+        standard = [s for s in self.subjects if not s.is_custom]
+        custom = [s for s in self.subjects if s.is_custom]
+
+        if not self.subjects:
+            sections.append(EmptySection(
+                title="No Subjects Yet",
+                description="Create your first subject to start organizing lessons.",
+            ))
+        else:
+            if standard:
+                sections.append(self._list_section("Standard Subjects", standard))
+            if custom:
+                sections.append(self._list_section("Custom Subjects", custom))
+
         return HyperStateResponse(
             view="list",
             title="Subjects",
             self_="/subjects",
+            flash=flash,
             context=ViewContext(
                 domain="subjects",
                 aggregate="subjects",
@@ -48,37 +66,40 @@ class SubjectListProjection:
                 actor=self.actor,
             ),
             nav=[NavLink(label="Dashboard", href="/dashboard", rel="parent")],
-            sections=[
-                ActionSection(
-                    key="create-subject",
-                    label="Create Subject",
-                    method="POST",
-                    href="/subjects",
-                    fields=[
-                        TextField(name="name", label="Name", required=True),
-                        SelectField(name="color", label="Color", options=COLOR_OPTIONS),
-                        SelectField(name="icon", label="Icon", options=ICON_OPTIONS),
-                        TextareaField(name="description", label="Description"),
-                    ],
-                ),
-                ListSection(
-                    title="All Subjects",
-                    columns=[
-                        ColumnDef(key="icon", label=""),
-                        ColumnDef(key="name", label="Subject"),
-                        ColumnDef(key="type", label="Type"),
-                    ],
-                    items=[
-                        ListItem(
-                            href=f"/subjects/{s.id}",
-                            data={
-                                "icon": s.icon,
-                                "name": s.name,
-                                "type": "Custom" if s.is_custom else "Default",
-                            },
-                        )
-                        for s in self.subjects
-                    ],
-                ),
+            sections=sections,
+        )
+
+    def _create_section(self) -> ActionSection:
+        return ActionSection(
+            key="create-subject",
+            label="Create Subject",
+            method="POST",
+            href="/subjects",
+            fields=[
+                TextField(name="name", label="Name", required=True),
+                SelectField(name="color", label="Color", options=COLOR_OPTIONS),
+                SelectField(name="icon", label="Icon", options=ICON_OPTIONS),
+                TextareaField(name="description", label="Description"),
+            ],
+        )
+
+    def _list_section(self, title: str, subjects: list[Subject]) -> ListSection:
+        return ListSection(
+            title=title,
+            columns=[
+                ColumnDef(key="icon", label=""),
+                ColumnDef(key="name", label="Subject"),
+                ColumnDef(key="type", label="Type"),
+            ],
+            items=[
+                ListItem(
+                    href=f"/subjects/{s.id}",
+                    data={
+                        "icon": s.icon,
+                        "name": s.name,
+                        "type": "Custom" if s.is_custom else "Standard",
+                    },
+                )
+                for s in subjects
             ],
         )

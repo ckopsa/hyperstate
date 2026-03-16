@@ -19,7 +19,7 @@ from app.web.dashboard.routes import router as dashboard_router
 from app.web.calendar.routes import router as calendar_router
 from app.application.orders.cancel_order import OrderNotFound
 from app.domain.students.errors import StudentNotFound
-from app.domain.subjects.errors import SubjectNotFound
+from app.domain.subjects.errors import SubjectNotFound, SubjectError
 from app.domain.lessons.errors import LessonNotFound
 
 from app.infrastructure.database import engine, Base, async_session
@@ -215,6 +215,18 @@ async def subject_not_found_handler(request, exc: SubjectNotFound):
         nav=[NavLink(label="All Subjects", href="/subjects", rel="collection")],
     )
     return JSONResponse(status_code=404, content=response.model_dump(by_alias=True, exclude_none=True))
+
+
+@app.exception_handler(SubjectError)
+async def subject_error_handler(request, exc: SubjectError):
+    response = HyperStateResponse(
+        view="error",
+        title="Cannot Complete Action",
+        self_=str(request.url.path),
+        sections=[ContentSection(body=str(exc), format="plain")],
+        nav=[NavLink(label="All Subjects", href="/subjects", rel="collection")],
+    )
+    return JSONResponse(status_code=422, content=response.model_dump(by_alias=True, exclude_none=True))
 
 
 @app.exception_handler(LessonNotFound)

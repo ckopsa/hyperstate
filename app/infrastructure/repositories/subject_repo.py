@@ -32,6 +32,12 @@ class SubjectRepository:
         row.description = subject.description
         await self.session.flush()
 
+    async def delete(self, subject_id: str) -> None:
+        row = await self.session.get(SubjectRow, subject_id)
+        if row is not None:
+            await self.session.delete(row)
+            await self.session.flush()
+
     def _to_domain(self, row: SubjectRow) -> Subject:
         return Subject(
             id=row.id,
