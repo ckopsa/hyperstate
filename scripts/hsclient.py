@@ -634,6 +634,51 @@ def interactive_loop(hs: HSClient, start_href: str = "/") -> None:
                 print(_dim("  Not recording — nothing to save."))
             continue
 
+        # Inspect field
+        if raw.startswith("inspect ") or raw.startswith("? "):
+            prefix_len = 8 if raw.startswith("inspect ") else 2
+            field_name = raw[prefix_len:].strip()
+            
+            found = False
+            for action in actions:
+                fields = action.get("fields", [])
+                for f in fields:
+                    if f.get("name") == field_name:
+                        print(_bold(f"  Field: {field_name}"))
+                        print(f"    type: {f.get('type')}")
+                        print(f"    label: {f.get('label')}")
+                        print(f"    required: {f.get('required', False)}")
+                        
+                        if 'default' in f:
+                            print(f"    default: {f.get('default')}")
+                        if 'value' in f:
+                            print(f"    value: {f.get('value')}")
+                        if 'help' in f:
+                            print(f"    help: {f.get('help')}")
+                        if 'placeholder' in f:
+                            print(f"    placeholder: {f.get('placeholder')}")
+                            
+                        # Specific attributes
+                        if 'options' in f:
+                            options = f.get('options', [])
+                            print(f"    options: {len(options)} items")
+                            for opt in options:
+                                print(f"      - {opt.get('value')}: {opt.get('label')}")
+                        if 'options_href' in f:
+                            print(f"    options_href: {f.get('options_href')}")
+                        if 'depends_on' in f:
+                            depends_on = f.get('depends_on')
+                            print(f"    depends_on: {depends_on.get('field')} -> {depends_on.get('href')}")
+                            
+                        found = True
+                        break
+                if found:
+                    break
+                    
+            if not found:
+                print(_red(f"  Field '{field_name}' not found in any visible action."))
+            continue
+
         # Number selection
         if raw.isdigit():
             idx = int(raw)
@@ -682,6 +727,7 @@ def print_help() -> None:
       json        Dump raw JSON response
       story       Show recording status
       save        Save current story to disk
+      inspect <f> Inspect form field metadata (also ? <f>)
       q, quit     Exit
       ?, help     Show this help
     """))
