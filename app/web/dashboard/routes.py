@@ -7,6 +7,7 @@ from app.hyperstate.response import HyperStateResponse, ActorContext
 from app.infrastructure.database import get_db
 from app.infrastructure.repositories.lesson_repo import LessonRepository
 from app.infrastructure.repositories.subject_repo import SubjectRepository
+from app.application.dashboard.defer_all_lessons import DeferAllLessons
 from app.projection.dashboard.view import DashboardProjection
 from app.web.deps import get_current_actor
 
@@ -34,6 +35,15 @@ async def get_dashboard(
         subjects=subjects_map,
         actor=actor,
     ).build()
+
+
+@router.post("/dashboard/defer-all", response_model=HyperStateResponse)
+async def defer_all_lessons(
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    use_case = DeferAllLessons(db)
+    return await use_case.execute(actor)
 
 
 async def _gather(lesson_repo, subject_repo, today):

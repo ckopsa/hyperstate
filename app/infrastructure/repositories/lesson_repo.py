@@ -78,6 +78,17 @@ class LessonRepository:
         rows = (await self.session.execute(stmt)).scalars().all()
         return [self._to_domain(r) for r in rows]
 
+    async def list_incomplete_after_date(self, after: date) -> list[Lesson]:
+        """Return pending/in_progress lessons with scheduled_date strictly after `after`."""
+        stmt = (
+            select(LessonRow)
+            .where(LessonRow.scheduled_date > after)
+            .where(LessonRow.state.in_([LessonState.PENDING, LessonState.IN_PROGRESS]))
+            .order_by(LessonRow.scheduled_date, LessonRow.time_slot, LessonRow.title)
+        )
+        rows = (await self.session.execute(stmt)).scalars().all()
+        return [self._to_domain(r) for r in rows]
+
     async def list_by_date_range(
         self,
         start: date,

@@ -1,11 +1,11 @@
 from app.domain.lessons.aggregate import Lesson
 from app.domain.lessons.states import LessonState
 from app.domain.subjects.aggregate import Subject
-from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
 from app.hyperstate.flash import Flash
+from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
 from app.hyperstate.sections import (
     SummarySection, SummaryItem, ListSection, ColumnDef, ListItem,
-    TimelineSection, TimelineEvent, EmptySection, ActionSection,
+    TimelineSection, TimelineEvent, EmptySection, ActionSection, Section,
 )
 from app.hyperstate.nav import NavLink
 
@@ -20,12 +20,14 @@ class DashboardProjection:
         instruction_days: int,
         subjects: dict[str, Subject],
         actor: ActorContext,
+        flash: Flash | None = None,
     ):
         self.today_lessons = today_lessons
         self.recently_completed = recently_completed
         self.instruction_days = instruction_days
         self.subjects = subjects
         self.actor = actor
+        self.flash = flash
 
     def build(self, flash: Flash | None = None) -> HyperStateResponse:
         total_today = len(self.today_lessons)
@@ -46,6 +48,12 @@ class DashboardProjection:
             ]
         )
 
+        incomplete_today = [
+            lesson for lesson in self.today_lessons
+            if lesson.state != LessonState.COMPLETED
+        ]
+
+        schedule: ListSection | EmptySection
         if self.today_lessons:
             schedule = ListSection(
                 title="Today's Schedule",
@@ -66,15 +74,26 @@ class DashboardProjection:
                             "lesson": l.title,
                             "status": l.state.value,
                         },
-                        actions=[] if l.state == LessonState.COMPLETED else [
-                            ActionSection(
-                                key="complete-task",
-                                label="Done!",
-                                method="POST",
-                                href=f"/lessons/{l.id}/complete",
-                                style="primary",
-                            )
-                        ],
+                        actions=(
+                            [
+                                ActionSection(
+                                    key="complete-task",
+                                    label="Done!",
+                                    method="POST",
+                                    href=f"/lessons/{l.id}/complete",
+                                    style="primary",
+                                ),
+                                ActionSection(
+                                    key="push-tomorrow",
+                                    label="→ Tomorrow",
+                                    method="POST",
+                                    href=f"/lessons/{l.id}/defer",
+                                    style="subtle",
+                                ),
+                            ]
+                            if l.state != LessonState.COMPLETED
+                            else []
+                        ),
                     )
                     for l in self.today_lessons
                 ],
@@ -97,21 +116,33 @@ class DashboardProjection:
         ]
         timeline = TimelineSection(title="Recent Activity", events=timeline_events)
 
-        sections = [summary, schedule]
+        sections: list[Section] = [summary, schedule]
         if timeline_events:
             sections.append(timeline)
+
+        if incomplete_today:
+            sections.append(
+                ActionSection(
+                    key="push-all-remaining",
+                    label="Push all to tomorrow",
+                    method="POST",
+                    href="/dashboard/defer-all",
+                    style="subtle",
+                    confirm="Move all incomplete lessons to tomorrow?",
+                )
+            )
 
         return HyperStateResponse(
             view="dashboard",
             title="Daily Dashboard",
             self_="/dashboard",
+            flash=flash or self.flash,
             context=ViewContext(
                 domain="dashboard",
                 aggregate="dashboard",
                 state="overview",
                 actor=self.actor,
             ),
-            flash=flash,
             nav=[
                 NavLink(label="Calendar", href="/calendar", rel="section"),
                 NavLink(label="Subjects", href="/subjects", rel="section"),

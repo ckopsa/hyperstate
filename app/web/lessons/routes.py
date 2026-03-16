@@ -13,6 +13,7 @@ from app.projection.lessons.list import LessonListProjection
 from app.projection.lessons.detail import LessonDetailProjection
 from app.projection.dashboard.view import DashboardProjection
 from app.application.lessons.create_lesson import CreateLesson
+from app.application.lessons.defer_lesson import DeferLesson
 from app.application.lessons.transition_lesson import TransitionLesson
 from app.application.lessons.add_resource import AddResource
 from app.application.lessons.remove_resource import RemoveResource
@@ -166,3 +167,13 @@ async def remove_resource(
         resource_id=resource_id,
         actor=actor,
     )
+
+
+@router.post("/{lesson_id}/defer", response_model=HyperStateResponse)
+async def defer_lesson(
+    lesson_id: str,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    use_case = DeferLesson(db)
+    return await use_case.execute(lesson_id, actor)

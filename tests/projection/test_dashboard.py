@@ -132,13 +132,15 @@ class TestDashboardInlineActions:
         view = proj.build()
         schedule = next(s for s in view.sections if s.kind == "list")
         item = schedule.items[0]
-        assert len(item.actions) == 1
-        action = item.actions[0]
-        assert action.key == "complete-task"
-        assert action.label == "Done!"
-        assert action.method == "POST"
-        assert action.href == f"/lessons/{pending_lesson.id}/complete"
-        assert action.style == "primary"
+        assert len(item.actions) == 2
+        action_keys = {a.key for a in item.actions}
+        assert "complete-task" in action_keys
+        assert "push-tomorrow" in action_keys
+        complete_action = next(a for a in item.actions if a.key == "complete-task")
+        assert complete_action.label == "Done!"
+        assert complete_action.method == "POST"
+        assert complete_action.href == f"/lessons/{pending_lesson.id}/complete"
+        assert complete_action.style == "primary"
 
     def test_completed_lesson_has_no_inline_action(self, actor, subject, completed_lesson):
         proj = DashboardProjection(

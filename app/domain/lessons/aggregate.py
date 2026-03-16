@@ -1,12 +1,21 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from datetime import date, datetime, UTC
+from datetime import date, datetime, timedelta, UTC
 
 from app.domain.shared.aggregate import AggregateRoot
 from .states import LessonState, next_state, TRANSITIONS
 from .errors import LessonError
 from .events import LessonCreated, LessonStarted, LessonCompleted, LessonReset
 from .entities import LessonResource, ResourceType
+
+
+def next_weekday(d: date) -> date:
+    """Return d + 1 calendar day, skipping over weekends."""
+    next_d = d + timedelta(days=1)
+    while next_d.weekday() >= 5:  # 5=Saturday, 6=Sunday
+        next_d += timedelta(days=1)
+    return next_d
 
 
 @dataclass(kw_only=True)
@@ -90,6 +99,14 @@ class Lesson(AggregateRoot):
                 del self.resources[i]
                 return
         raise LessonError(f"Resource {resource_id} not found on this lesson.")
+
+    def defer(self) -> None:
+        """Push this lesson to the next weekday. Only allowed for incomplete lessons."""
+        if self.state == LessonState.COMPLETED:
+            raise LessonError("Cannot defer a completed lesson.")
+        if self.scheduled_date is None:
+            raise LessonError("Cannot defer an unscheduled lesson.")
+        self.scheduled_date = next_weekday(self.scheduled_date)
 
     def available_actions(self) -> set[str]:
         return set(TRANSITIONS.get(self.state, {}).keys())
