@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HyperState</title>
+<style>
+  /* ─── Design Tokens ─── */
+  :root {
+    --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    --gray-50: #f8fafc; --gray-100: #f1f5f9; --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1; --gray-400: #94a3b8; --gray-500: #64748b;
+    --gray-600: #475569; --gray-700: #334155; --gray-800: #1e293b;
+    --gray-900: #0f172a;
+
+    --blue-50: #eff6ff; --blue-100: #dbeafe; --blue-500: #3b82f6;
+    --blue-600: #2563eb; --blue-700: #1d4ed8;
+    --green-50: #f0fdf4; --green-600: #16a34a; --green-700: #15803d;
+    --red-50: #fef2f2; --red-500: #ef4444; --red-600: #dc2626; --red-700: #b91c1c;
+    --amber-50: #fffbeb; --amber-600: #d97706; --amber-700: #b45309;
+    --sky-50: #f0f9ff; --sky-600: #0284c7;
+
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+
+    --transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ─── Reset & Base ─── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--gray-50);
+    color: var(--gray-800);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── Shell ─── */
+  .shell {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 20px;
+    min-height: 100vh;
+  }
+
+  .shell-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--gray-200);
+  }
+
+  .shell-logo {
+    width: 32px; height: 32px;
+    background: var(--gray-900);
+    border-radius: 8px;
+    display: grid; place-items: center;
+    color: white; font-weight: 700; font-size: 14px;
+  }
+
+  .shell-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gray-700);
+    letter-spacing: -0.01em;
+  }
+
+  .shell-breadcrumb {
+    font-size: 13px;
+    color: var(--gray-400);
+    margin-left: auto;
+  }
+  .shell-breadcrumb a {
+    color: var(--blue-600);
+    text-decoration: none;
+  }
+  .shell-breadcrumb a:hover { text-decoration: underline; }
+
+  /* ─── Loading ─── */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    color: var(--gray-400);
+    font-size: 14px;
+    gap: 10px;
+  }
+  .loading::before {
+    content: '';
+    width: 18px; height: 18px;
+    border: 2px solid var(--gray-200);
+    border-top-color: var(--blue-500);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── Page Title ─── */
+  .page-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--gray-900);
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+
+  .page-context {
+    font-size: 13px;
+    color: var(--gray-400);
+    font-family: var(--font-mono);
+    margin-bottom: 24px;
+  }
+
+  /* ─── Flash ─── */
+  .flash {
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    font-size: 14px;
+    animation: flashIn 0.3s ease-out;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  @keyframes flashIn { from { opacity: 0; transform: translateY(-8px); } }
+
+  .flash-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .flash-content { flex: 1; }
+  .flash-title { font-weight: 600; }
+  .flash-body { margin-top: 2px; opacity: 0.85; }
+  .flash-close {
+    background: none; border: none; cursor: pointer;
+    font-size: 18px; opacity: 0.5; padding: 0; line-height: 1;
+    color: inherit;
+  }
+  .flash-close:hover { opacity: 1; }
+
+  .flash-success { background: var(--green-50); color: var(--green-700); border: 1px solid #bbf7d0; }
+  .flash-error { background: var(--red-50); color: var(--red-700); border: 1px solid #fecaca; }
+  .flash-warning { background: var(--amber-50); color: var(--amber-700); border: 1px solid #fde68a; }
+  .flash-info { background: var(--sky-50); color: var(--sky-600); border: 1px solid #bae6fd; }
+
+  /* ─── Nav ─── */
+  .nav-links {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: var(--blue-600);
+    text-decoration: none;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: var(--blue-50);
+    transition: background var(--transition);
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+  }
+  .nav-link:hover { background: var(--blue-100); }
+  .nav-link::before { content: '←'; }
+
+  /* ─── Card ─── */
+  .card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--gray-400);
+    margin-bottom: 16px;
+  }
+
+  /* ─── Section: properties ─── */
+  .prop-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .prop-item {}
+  .prop-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray-400);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .prop-value {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--gray-800);
+  }
+  .prop-value a {
+    color: var(--blue-600);
+    text-decoration: none;
+  }
+  .prop-value a:hover { text-decoration: underline; }
+
+  /* ─── Badge ─── */
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+    letter-spacing: 0.02em;
+  }
+  .badge-success { background: #dcfce7; color: var(--green-700); }
+  .badge-warning { background: #fef3c7; color: var(--amber-700); }
+  .badge-danger { background: #fee2e2; color: var(--red-700); }
+  .badge-info { background: #dbeafe; color: var(--blue-700); }
+  .badge-secondary { background: var(--gray-100); color: var(--gray-600); }
+
+  /* ─── Section: summary ─── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+  }
+  .summary-card {
+    text-align: center;
+    padding: 16px 12px;
+    background: var(--gray-50);
+    border-radius: var(--radius);
+  }
+  .summary-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--gray-900);
+    letter-spacing: -0.02em;
+  }
+  .summary-label {
+    font-size: 12px;
+    color: var(--gray-500);
+    margin-top: 2px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* ─── Section: list / table ─── */
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--gray-400);
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--gray-200);
+  }
+  th.right { text-align: right; }
+  td {
+    padding: 12px;
+    border-bottom: 1px solid var(--gray-100);
+    color: var(--gray-700);
+  }
+  td.right { text-align: right; font-family: var(--font-mono); font-size: 13px; }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover { background: var(--gray-50); }
+  .empty-msg {
+    text-align: center;
+    padding: 32px;
+    color: var(--gray-400);
+    font-size: 14px;
+  }
+
+  /* ─── Section: timeline ─── */
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 6px; top: 4px; bottom: 4px;
+    width: 2px;
+    background: var(--gray-200);
+    border-radius: 1px;
+  }
+  .timeline-event {
+    position: relative;
+    padding-bottom: 18px;
+  }
+  .timeline-event:last-child { padding-bottom: 0; }
+  .timeline-event::before {
+    content: '';
+    position: absolute;
+    left: -22px; top: 6px;
+    width: 10px; height: 10px;
+    background: white;
+    border: 2px solid var(--gray-300);
+    border-radius: 50%;
+  }
+  .timeline-event:first-child::before { border-color: var(--blue-500); background: var(--blue-50); }
+  .timeline-label { font-size: 14px; color: var(--gray-700); font-weight: 500; }
+  .timeline-meta {
+    font-size: 12px;
+    color: var(--gray-400);
+    margin-top: 2px;
+    font-family: var(--font-mono);
+  }
+
+  /* ─── Section: content ─── */
+  .content-body {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--gray-700);
+  }
+
+  /* ─── Section: empty ─── */
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+  }
+  .empty-state h3 { font-size: 18px; color: var(--gray-700); margin-bottom: 8px; }
+  .empty-state p { font-size: 14px; color: var(--gray-400); margin-bottom: 16px; }
+
+  /* ─── Actions / Buttons ─── */
+  .action-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all var(--transition);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-default { background: white; border-color: var(--gray-300); color: var(--gray-700); }
+  .btn-default:hover:not(:disabled) { background: var(--gray-50); border-color: var(--gray-400); }
+
+  .btn-primary { background: var(--blue-600); color: white; }
+  .btn-primary:hover:not(:disabled) { background: var(--blue-700); }
+
+  .btn-danger { background: var(--red-600); color: white; }
+  .btn-danger:hover:not(:disabled) { background: var(--red-700); }
+
+  .btn-subtle { background: transparent; color: var(--gray-500); }
+  .btn-subtle:hover:not(:disabled) { background: var(--gray-100); color: var(--gray-700); }
+
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+  .condition-msg {
+    font-size: 13px;
+    color: var(--gray-500);
+    padding: 10px 14px;
+    background: var(--gray-50);
+    border-radius: var(--radius);
+    border: 1px dashed var(--gray-300);
+  }
+
+  /* ─── Forms ─── */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .form-grid .span-2 { grid-column: span 2; }
+  .form-grid .span-1 { grid-column: span 1; }
+
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-600);
+  }
+  .field-label .required { color: var(--red-500); margin-left: 2px; }
+
+  .field-input {
+    width: 100%;
+    padding: 9px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius);
+    background: white;
+    color: var(--gray-800);
+    transition: border-color var(--transition), box-shadow var(--transition);
+    outline: none;
+  }
+  .field-input:focus {
+    border-color: var(--blue-500);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+  }
+  .field-input.has-error {
+    border-color: var(--red-500);
+    box-shadow: 0 0 0 3px rgba(239,68,68,0.1);
+  }
+
+  select.field-input { appearance: none; padding-right: 32px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+
+  .field-help { font-size: 12px; color: var(--gray-400); }
+  .field-error { font-size: 12px; color: var(--red-600); font-weight: 500; }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .checkbox-row input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--blue-600);
+    cursor: pointer;
+  }
+  .checkbox-row label {
+    font-size: 14px;
+    color: var(--gray-700);
+    cursor: pointer;
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--gray-100);
+  }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 640px) {
+    .shell { padding: 16px 12px; }
+    .page-title { font-size: 22px; }
+    .prop-grid { grid-template-columns: 1fr 1fr; }
+    .summary-grid { grid-template-columns: 1fr 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-grid .span-2, .form-grid .span-1 { grid-column: span 1; }
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="shell">
+  <header class="shell-header">
+    <div class="shell-logo">H</div>
+    <div class="shell-title">HyperState</div>
+    <div class="shell-breadcrumb" id="breadcrumb"></div>
+  </header>
+  <main id="app">
+    <div class="loading">Loading…</div>
+  </main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// HyperState Thin Client
+// ═══════════════════════════════════════════════════════════
+// This client knows NOTHING about orders, customers, or any
+// domain concept. It renders sections by `kind`, fields by
+// `type`, and values by `display`. That's it.
+// ═══════════════════════════════════════════════════════════
+
+const $ = (sel, ctx = document) => ctx.querySelector(sel);
+const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
+const h = (tag, attrs = {}, ...children) => {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') el.className = v;
+    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === 'dataset') Object.assign(el.dataset, v);
+    else if (k === 'htmlFor') el.htmlFor = v;
+    else if (k === 'checked' || k === 'disabled' || k === 'required' || k === 'readOnly' || k === 'selected') el[k] = v;
+    else el.setAttribute(k, v);
+  }
+  for (const child of children.flat(Infinity)) {
+    if (child == null || child === false) continue;
+    el.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+  }
+  return el;
+};
+
+// ─── State ───
+let currentHref = '/orders';
+let flashTimer = null;
+
+// ─── Navigation ───
+async function navigate(href) {
+  currentHref = href;
+  const app = $('#app');
+  app.innerHTML = '';
+  app.appendChild(h('div', { class: 'loading' }, 'Loading…'));
+
+  try {
+    const res = await fetch(href, { headers: { 'Accept': 'application/vnd.hyperstate+json' } });
+    const data = await res.json();
+    renderView(data);
+  } catch (err) {
+    app.innerHTML = '';
+    app.appendChild(h('div', { class: 'card' },
+      h('p', { style: { color: 'var(--red-600)' } }, `Failed to load: ${err.message}`)
+    ));
+  }
+}
+
+async function submitAction(method, href, body = null, confirmMsg = null) {
+  if (confirmMsg && !confirm(confirmMsg)) return;
+
+  const app = $('#app');
+  try {
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/vnd.hyperstate+json' },
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(href, opts);
+    const data = await res.json();
+
+    // If it's a full HyperState response, render it
+    if (data['$type'] === 'application/vnd.hyperstate+json') {
+      currentHref = data.self || currentHref;
+      renderView(data);
+    }
+  } catch (err) {
+    console.error('Action failed:', err);
+  }
+}
+
+// ─── View Renderer ───
+function renderView(data) {
+  const app = $('#app');
+  app.innerHTML = '';
+
+  // Breadcrumb
+  const crumb = $('#breadcrumb');
+  crumb.innerHTML = '';
+  if (data.context) {
+    crumb.appendChild(document.createTextNode(
+      `${data.context.domain} / ${data.context.aggregate} / ${data.context.state}`
+    ));
+  }
+
+  // Title
+  app.appendChild(h('h1', { class: 'page-title' }, data.title));
+
+  // Nav
+  if (data.nav && data.nav.length) {
+    const navEl = h('div', { class: 'nav-links' });
+    for (const link of data.nav) {
+      navEl.appendChild(h('button', {
+        class: 'nav-link',
+        onClick: () => navigate(link.href),
+      }, link.label));
+    }
+    app.appendChild(navEl);
+  }
+
+  // Flash
+  if (data.flash) {
+    app.appendChild(renderFlash(data.flash));
+  }
+
+  // Sections
+  for (const section of data.sections || []) {
+    const rendered = renderSection(section);
+    if (rendered) app.appendChild(rendered);
+  }
+}
+
+// ─── Flash ───
+function renderFlash(flash) {
+  const icons = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' };
+  const el = h('div', { class: `flash flash-${flash.type}` },
+    h('span', { class: 'flash-icon' }, icons[flash.type] || ''),
+    h('div', { class: 'flash-content' },
+      h('div', { class: 'flash-title' }, flash.title),
+      flash.body ? h('div', { class: 'flash-body' }, flash.body) : null,
+    ),
+    h('button', { class: 'flash-close', onClick: (e) => e.target.closest('.flash').remove() }, '×'),
+  );
+  // Auto-dismiss after 8s
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => el.remove(), 8000);
+  return el;
+}
+
+// ─── Section Router ───
+function renderSection(section) {
+  const renderers = {
+    properties: renderProperties,
+    action: renderAction,
+    list: renderList,
+    content: renderContent,
+    summary: renderSummary,
+    timeline: renderTimeline,
+    group: renderGroup,
+    empty: renderEmpty,
+  };
+  const fn = renderers[section.kind];
+  return fn ? fn(section) : null;
+}
+
+// ─── Properties ───
+function renderProperties(section) {
+  return h('div', { class: 'card' },
+    section.title ? h('div', { class: 'card-title' }, section.title) : null,
+    h('div', { class: 'prop-grid' },
+      ...section.data.map(item =>
+        h('div', { class: 'prop-item' },
+          h('div', { class: 'prop-label' }, item.label),
+          h('div', { class: 'prop-value' }, renderDisplayValue(item)),
+        )
+      )
+    )
+  );
+}
+
+// ─── Display Value Formatter ───
+function renderDisplayValue(item) {
+  const v = item.value;
+  switch (item.display) {
+    case 'badge': {
+      const cls = `badge badge-${item.variant || 'secondary'}`;
+      return h('span', { class: cls }, String(v));
+    }
+    case 'currency': {
+      const formatted = new Intl.NumberFormat('en-US', {
+        style: 'currency', currency: item.currency || 'USD',
+      }).format(v);
+      return document.createTextNode(formatted);
+    }
+    case 'datetime': {
+      try {
+        const d = new Date(v);
+        return document.createTextNode(d.toLocaleDateString('en-US', {
+          month: 'short', day: 'numeric', year: 'numeric',
+          hour: 'numeric', minute: '2-digit',
+        }));
+      } catch { return document.createTextNode(String(v)); }
+    }
+    case 'date': {
+      try {
+        const d = new Date(v);
+        return document.createTextNode(d.toLocaleDateString('en-US', {
+          month: 'short', day: 'numeric', year: 'numeric',
+        }));
+      } catch { return document.createTextNode(String(v)); }
+    }
+    case 'percentage': {
+      return document.createTextNode((v * 100).toFixed(1) + '%');
+    }
+    case 'number': {
+      return document.createTextNode(new Intl.NumberFormat('en-US').format(v));
+    }
+    default: {
+      if (item.href) {
+        return h('a', { href: '#', onClick: (e) => { e.preventDefault(); navigate(item.href); } }, String(v));
+      }
+      return document.createTextNode(String(v ?? ''));
+    }
+  }
+}
+
+// ─── Action ───
+function renderAction(section) {
+  // Disabled by condition
+  if (section.condition && !section.condition.met) {
+    return h('div', { class: 'card' },
+      section.label ? h('div', { class: 'card-title' }, section.label) : null,
+      h('div', { class: 'condition-msg' },
+        section.condition.explain || 'This action is not available.',
+        section.condition.alternative
+          ? h('span', {},
+              ' ',
+              h('a', {
+                href: '#',
+                style: { color: 'var(--blue-600)' },
+                onClick: (e) => { e.preventDefault(); navigate(section.condition.alternative.href); },
+              }, section.condition.alternative.label),
+            )
+          : null,
+      ),
+    );
+  }
+
+  // Has fields = form
+  if (section.fields && section.fields.length > 0) {
+    return renderForm(section);
+  }
+
+  // No fields = button
+  return h('div', { class: 'card' },
+    h('div', { class: 'action-bar' },
+      h('button', {
+        class: `btn btn-${section.style || 'default'}`,
+        onClick: () => submitAction(section.method, section.href, null, section.confirm),
+      }, section.label),
+      section.description ? h('span', { style: { fontSize: '13px', color: 'var(--gray-500)' } }, section.description) : null,
+    ),
+  );
+}
+
+// ─── Form Renderer ───
+function renderForm(section) {
+  const formState = {};
+  for (const field of section.fields) {
+    formState[field.name] = field.value ?? field.default ?? (field.type === 'boolean' ? false : '');
+  }
+
+  const card = h('div', { class: 'card' },
+    section.label ? h('div', { class: 'card-title' }, section.label) : null,
+  );
+
+  const grid = h('div', { class: 'form-grid' });
+  card.appendChild(grid);
+
+  // Render each field
+  for (const field of section.fields) {
+    if (field.hidden) continue;
+    const fieldEl = renderField(field, formState, section);
+    if (fieldEl) grid.appendChild(fieldEl);
+  }
+
+  // Submit button
+  const actions = h('div', { class: 'form-actions' },
+    h('button', {
+      class: `btn btn-${section.style === 'default' ? 'primary' : section.style || 'primary'}`,
+      onClick: () => {
+        // Build nested body from dot-notation
+        const body = {};
+        for (const [key, val] of Object.entries(formState)) {
+          setNested(body, key, val);
+        }
+        submitAction(section.method, section.href, body, section.confirm);
+      },
+    }, section.label || 'Submit'),
+  );
+  card.appendChild(actions);
+
+  return card;
+}
+
+function setNested(obj, path, value) {
+  const parts = path.split('.');
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (!cur[parts[i]]) cur[parts[i]] = {};
+    cur = cur[parts[i]];
+  }
+  cur[parts[parts.length - 1]] = value;
+}
+
+// ─── Field Renderer ───
+function renderField(field, formState, action) {
+  const span = field.span === 2 ? 'span-2' : 'span-1';
+
+  if (field.type === 'boolean') {
+    return h('div', { class: `field ${span}` },
+      h('div', { class: 'checkbox-row' },
+        h('input', {
+          type: 'checkbox',
+          id: `field-${field.name}`,
+          checked: !!formState[field.name],
+          onChange: (e) => { formState[field.name] = e.target.checked; },
+        }),
+        h('label', { htmlFor: `field-${field.name}` }, field.label),
+      ),
+      field.error ? h('div', { class: 'field-error' }, field.error) : null,
+    );
+  }
+
+  if (field.type === 'select') {
+    const selectEl = h('select', {
+      class: `field-input ${field.error ? 'has-error' : ''}`,
+      disabled: field.disabled,
+      onChange: (e) => {
+        formState[field.name] = e.target.value;
+        handleDependency(field, formState, action);
+      },
+    },
+      h('option', { value: '' }, field.placeholder || `Select ${field.label}…`),
+      ...(field.options || []).map(opt =>
+        h('option', { value: opt.value, selected: formState[field.name] === opt.value }, opt.label)
+      ),
+    );
+
+    // Store reference for dependency updates
+    selectEl.dataset.fieldName = field.name;
+
+    return h('div', { class: `field ${span}` },
+      h('label', { class: 'field-label' },
+        field.label,
+        field.required ? h('span', { class: 'required' }, '*') : null,
+      ),
+      selectEl,
+      field.help ? h('div', { class: 'field-help' }, field.help) : null,
+      field.error ? h('div', { class: 'field-error' }, field.error) : null,
+    );
+  }
+
+  if (field.type === 'textarea') {
+    return h('div', { class: `field span-2` },
+      h('label', { class: 'field-label' },
+        field.label,
+        field.required ? h('span', { class: 'required' }, '*') : null,
+      ),
+      h('textarea', {
+        class: `field-input ${field.error ? 'has-error' : ''}`,
+        rows: field.rows || 4,
+        placeholder: field.placeholder || '',
+        value: formState[field.name] || '',
+        disabled: field.disabled,
+        onInput: (e) => { formState[field.name] = e.target.value; },
+      }, formState[field.name] || ''),
+      field.help ? h('div', { class: 'field-help' }, field.help) : null,
+      field.error ? h('div', { class: 'field-error' }, field.error) : null,
+    );
+  }
+
+  // Default: text, number, email, url, phone, date, datetime, currency
+  const inputType = {
+    text: 'text', number: 'number', email: 'email', url: 'url',
+    phone: 'tel', date: 'date', datetime: 'datetime-local',
+    currency: 'number',
+  }[field.type] || 'text';
+
+  const inputAttrs = {
+    type: inputType,
+    class: `field-input ${field.error ? 'has-error' : ''}`,
+    value: formState[field.name] ?? '',
+    placeholder: field.placeholder || '',
+    disabled: field.disabled,
+    readOnly: field.readonly || false,
+    onInput: (e) => {
+      formState[field.name] = field.type === 'number' || field.type === 'currency'
+        ? parseFloat(e.target.value) || 0
+        : e.target.value;
+    },
+  };
+
+  if (field.validation) {
+    if (field.validation.min != null) inputAttrs.min = String(field.validation.min);
+    if (field.validation.max != null) inputAttrs.max = String(field.validation.max);
+    if (field.validation.step != null) inputAttrs.step = String(field.validation.step);
+    if (field.validation.max_length != null) inputAttrs.maxLength = String(field.validation.max_length);
+    if (field.validation.pattern != null) inputAttrs.pattern = field.validation.pattern;
+  }
+
+  return h('div', { class: `field ${span}` },
+    h('label', { class: 'field-label' },
+      field.label,
+      field.required ? h('span', { class: 'required' }, '*') : null,
+    ),
+    h('input', inputAttrs),
+    field.help ? h('div', { class: 'field-help' }, field.help) : null,
+    field.error ? h('div', { class: 'field-error' }, field.error) : null,
+  );
+}
+
+// ─── Field Dependencies ───
+async function handleDependency(field, formState, action) {
+  if (!field.depends_on) {
+    // Check if OTHER fields depend on THIS field
+    for (const f of action.fields) {
+      if (f.depends_on && f.depends_on.fields.includes(field.name)) {
+        await resolveDependency(f, formState, action);
+      }
+    }
+    return;
+  }
+}
+
+async function resolveDependency(depField, formState, action) {
+  const dep = depField.depends_on;
+  if (!dep) return;
+
+  switch (dep.behavior) {
+    case 'reload_options': {
+      let url = dep.options_href;
+      for (const f of dep.fields) {
+        url = url.replace(`{${f}}`, encodeURIComponent(formState[f] || ''));
+      }
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        // Clear current value if requested
+        if (dep.clear_on_change) {
+          formState[depField.name] = '';
+        }
+        // Find and replace the select element
+        const selectEl = document.querySelector(`select[data-field-name="${depField.name}"]`);
+        if (selectEl) {
+          // Keep the placeholder
+          const placeholder = selectEl.options[0];
+          selectEl.innerHTML = '';
+          selectEl.appendChild(placeholder);
+          for (const opt of data.options) {
+            selectEl.appendChild(h('option', { value: opt.value }, opt.label));
+          }
+          selectEl.value = formState[depField.name] || '';
+        }
+      } catch (err) {
+        console.error('Failed to reload options:', err);
+      }
+      break;
+    }
+    case 'reload_form': {
+      const url = action.reload_href || action.href;
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ _reload: true, ...formState }),
+        });
+        const newAction = await res.json();
+        // Re-render the whole form card
+        const oldCard = document.querySelector(`[data-action-key="${action.key}"]`);
+        if (oldCard) {
+          const newCard = renderForm(newAction);
+          newCard.dataset.actionKey = action.key;
+          oldCard.replaceWith(newCard);
+        }
+      } catch (err) {
+        console.error('Failed to reload form:', err);
+      }
+      break;
+    }
+  }
+}
+
+// ─── List ───
+function renderList(section) {
+  if (!section.items || section.items.length === 0) {
+    return h('div', { class: 'card' },
+      section.title ? h('div', { class: 'card-title' }, section.title) : null,
+      h('div', { class: 'empty-msg' }, section.empty_message || 'No items.'),
+    );
+  }
+
+  const headerRow = h('tr', {},
+    ...section.columns.map(col =>
+      h('th', { class: col.align === 'right' ? 'right' : '' }, col.label)
+    )
+  );
+
+  const rows = section.items.map(item => {
+    const cells = section.columns.map(col => {
+      const raw = item.data[col.key];
+      const display = col.display || 'plain';
+      let content;
+
+      if (display === 'currency') {
+        content = new Intl.NumberFormat('en-US', {
+          style: 'currency', currency: col.currency || 'USD',
+        }).format(raw);
+      } else if (display === 'datetime' || display === 'date') {
+        try {
+          const d = new Date(raw);
+          content = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        } catch { content = String(raw); }
+      } else {
+        content = String(raw ?? '');
+      }
+
+      return h('td', { class: col.align === 'right' ? 'right' : '' }, content);
+    });
+
+    return h('tr', {
+      class: item.href ? 'clickable' : '',
+      onClick: item.href ? () => navigate(item.href) : undefined,
+    }, ...cells);
+  });
+
+  const table = h('table', {},
+    h('thead', {}, headerRow),
+    h('tbody', {}, ...rows),
+  );
+
+  const card = h('div', { class: 'card' },
+    section.title ? h('div', { class: 'card-title' }, section.title) : null,
+    h('div', { class: 'table-wrap' }, table),
+  );
+
+  // Pagination
+  if (section.pagination) {
+    const pg = section.pagination;
+    const pgBar = h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', fontSize: '13px', color: 'var(--gray-500)' } },
+      h('span', {}, pg.total != null ? `${pg.total} total` : ''),
+      h('div', { style: { display: 'flex', gap: '6px' } },
+        pg.prev ? h('button', { class: 'btn btn-subtle btn-sm', onClick: () => navigate(pg.prev.href) }, '← Prev') : null,
+        pg.next ? h('button', { class: 'btn btn-subtle btn-sm', onClick: () => navigate(pg.next.href) }, 'Next →') : null,
+      ),
+    );
+    card.appendChild(pgBar);
+  }
+
+  return card;
+}
+
+// ─── Content ───
+function renderContent(section) {
+  return h('div', { class: 'card' },
+    section.title ? h('div', { class: 'card-title' }, section.title) : null,
+    h('div', { class: 'content-body' }, section.body),
+  );
+}
+
+// ─── Summary ───
+function renderSummary(section) {
+  return h('div', { class: 'card' },
+    h('div', { class: 'summary-grid' },
+      ...section.items.map(item => {
+        let formatted;
+        if (item.display === 'currency') {
+          formatted = new Intl.NumberFormat('en-US', {
+            style: 'currency', currency: item.currency || 'USD',
+            minimumFractionDigits: 0,
+          }).format(item.value);
+        } else if (item.display === 'percentage') {
+          formatted = (item.value * 100).toFixed(1) + '%';
+        } else {
+          formatted = new Intl.NumberFormat('en-US').format(item.value);
+        }
+        const card = h('div', { class: 'summary-card' },
+          h('div', { class: 'summary-value' }, formatted),
+          h('div', { class: 'summary-label' }, item.label),
+        );
+        if (item.href) {
+          card.style.cursor = 'pointer';
+          card.onclick = () => navigate(item.href);
+        }
+        return card;
+      })
+    ),
+  );
+}
+
+// ─── Timeline ───
+function renderTimeline(section) {
+  return h('div', { class: 'card' },
+    section.title ? h('div', { class: 'card-title' }, section.title) : null,
+    h('div', { class: 'timeline' },
+      ...section.events.map(evt => {
+        let time;
+        try {
+          const d = new Date(evt.timestamp);
+          time = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        } catch { time = evt.timestamp; }
+        return h('div', { class: 'timeline-event' },
+          h('div', { class: 'timeline-label' }, evt.label),
+          h('div', { class: 'timeline-meta' },
+            time,
+            evt.actor ? ` · ${evt.actor}` : '',
+          ),
+        );
+      })
+    ),
+  );
+}
+
+// ─── Group ───
+function renderGroup(section) {
+  const inner = h('div', {
+    class: section.layout === 'columns' ? 'prop-grid' : '',
+    style: section.layout === 'sidebar' ? { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' } : {},
+  });
+  for (const sub of section.sections || []) {
+    const rendered = renderSection(sub);
+    if (rendered) inner.appendChild(rendered);
+  }
+  return h('div', { class: 'card' },
+    section.title ? h('div', { class: 'card-title' }, section.title) : null,
+    inner,
+  );
+}
+
+// ─── Empty ───
+function renderEmpty(section) {
+  return h('div', { class: 'card' },
+    h('div', { class: 'empty-state' },
+      h('h3', {}, section.title),
+      section.description ? h('p', {}, section.description) : null,
+      section.action ? h('button', {
+        class: 'btn btn-primary',
+        onClick: () => navigate(section.action.href),
+      }, section.action.label) : null,
+    ),
+  );
+}
+
+// ─── Boot ───
+navigate(currentHref);
+</script>
+</body>
+</html>

@@ -14,9 +14,34 @@ from pydantic import BaseModel
 from app.hyperstate.sections import ActionSection
 from app.projection.orders.form import OrderFormProjection
 
+from app.projection.orders.list import OrderListProjection
+
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 MEDIA_TYPE = "application/vnd.hyperstate+json"
+
+
+@router.get(
+    "",
+    response_model=HyperStateResponse,
+    responses={200: {"content": {MEDIA_TYPE: {}}}},
+)
+async def list_orders(
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from app.infrastructure.models.order_model import OrderRow
+    from app.infrastructure.repositories.order_repo import OrderRepository
+    
+    stmt = select(OrderRow).options(selectinload(OrderRow.items))
+    rows = (await db.execute(stmt)).scalars().all()
+    
+    repo = OrderRepository(db)
+    orders = [repo._to_domain(row) for row in rows]
+    
+    return OrderListProjection(orders, actor).build()
 
 
 class ShippingFormReload(BaseModel):
