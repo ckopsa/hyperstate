@@ -119,9 +119,10 @@ async def startup():
 
 
 @app.get("/", response_class=HTMLResponse)
-async def get_client():
-    path = os.path.join(os.path.dirname(__file__), "web", "client.html")
-    with open(path, "r") as f:
+@app.get("/{path:path}", response_class=HTMLResponse)
+async def get_client(path: str = ""):
+    file_path = os.path.join(os.path.dirname(__file__), "web", "client.html")
+    with open(file_path, "r") as f:
         return f.read()
 
 
