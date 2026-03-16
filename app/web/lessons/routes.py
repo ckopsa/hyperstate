@@ -176,7 +176,6 @@ async def remove_resource(
     )
 
 
-<<<<<<< HEAD
 @router.post("/{lesson_id}/defer", response_model=HyperStateResponse)
 async def defer_lesson(
     lesson_id: str,
@@ -185,7 +184,8 @@ async def defer_lesson(
 ):
     use_case = DeferLesson(db)
     return await use_case.execute(lesson_id, actor)
-=======
+
+
 @router.post("/{lesson_id}/portfolio", response_model=HyperStateResponse)
 async def upload_portfolio_photo(
     lesson_id: str,
@@ -257,4 +257,3 @@ async def delete_portfolio_photo(
     return LessonDetailProjection(lesson, actor, photos).build(
         flash=Flash(type="info", title="Photo deleted.")
     )
->>>>>>> 07fe41c (feat: add portfolio photo upload to lessons (hyp-vk3))
