@@ -338,7 +338,7 @@ def render_sections(
 
 # ── Form filling ───────────────────────────────────────────────────
 
-def fill_form(fields: list[dict], existing: dict[str, Any] | None = None) -> dict[str, Any]:
+def fill_form(fields: list[dict], existing: dict[str, Any] | None = None, hs_client: 'HSClient' | None = None) -> dict[str, Any]:
     """Interactively fill form fields. Returns nested dict for submission."""
     values: dict[str, Any] = {}
     print()
@@ -357,12 +357,27 @@ def fill_form(fields: list[dict], existing: dict[str, Any] | None = None) -> dic
 
         if ftype == "group":
             print(_bold(f"    ── {label} ──"))
-            sub = fill_form(f.get("fields", []), existing)
+            sub = fill_form(f.get("fields", []), existing, hs_client)
             values.update(sub)
             continue
 
         if ftype == "select" or ftype == "radio":
             options = f.get("options", [])
+
+            # Auto-fetch options if they are empty, not dependent on other fields, and we have an hs_client
+            if not options and f.get("options_href") and not f.get("depends_on") and hs_client:
+                href_val = f.get("options_href")
+                print(f"    {_dim(f'Fetching options from {href_val}...')}")
+                # Use a silent GET that doesn't affect the current state or story
+                try:
+                    res = hs_client.client.get(hs_client.resolve_url(href_val), headers={"Accept": "application/json"})
+                    if res.status_code < 400:
+                        data = res.json()
+                        if "options" in data:
+                            options = data["options"]
+                except Exception as e:
+                    print(f"      {_dim(f'Failed to fetch options: {e}')}")
+
             print(f"    {label}{req_mark}:")
             for oi, opt in enumerate(options):
                 marker = "●" if opt["value"] == str(current) else "○"
@@ -704,7 +719,7 @@ def interactive_loop(hs: HSClient, start_href: str = "/") -> None:
                         continue
 
                     if fields:
-                        body = fill_form(fields)
+                        body = fill_form(fields, hs_client=hs)
                         result = hs.submit(item, body)
                     else:
                         result = hs.submit(item)

@@ -1,0 +1,14 @@
+INFO:     Will watch for changes in these directories: ['/app']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [9081] using StatReload
+INFO:     Started server process [9087]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:55798 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55798 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60880 - "GET /web/client.html HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47984 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47984 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47984 - "GET /lessons HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47984 - "GET /api/subjects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47998 - "GET /api/students HTTP/1.1" 200 OK
