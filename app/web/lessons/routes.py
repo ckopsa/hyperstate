@@ -1,3 +1,4 @@
+import httpx
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
@@ -207,22 +208,68 @@ async def defer_lesson(
 @router.post("/{lesson_id}/portfolio", response_model=HyperStateResponse)
 async def upload_portfolio_photo(
     lesson_id: str,
-    photo: UploadFile = File(...),
+    photo: UploadFile | None = File(None),
+    photo_url: str | None = Form(None),
     caption: str | None = Form(None),
     tags: list[str] = Form(default=[]),
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ):
-    if not photo.content_type or not photo.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only image files are accepted.")
+    if photo is None and not photo_url:
+        raise HTTPException(status_code=400, detail="Must provide either photo or photo_url.")
+    if photo is not None and photo_url:
+        raise HTTPException(status_code=400, detail="Cannot provide both photo and photo_url.")
 
-    file_content = await photo.read()
+    if photo is not None:
+        if not photo.content_type or not photo.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail="Only image files are accepted.")
+        file_content = await photo.read()
+        filename = photo.filename or "photo.jpg"
+        mime_type = photo.content_type
+    else:
+        import urllib.parse
+        parsed = urllib.parse.urlparse(photo_url)
+        if parsed.scheme not in ("http", "https"):
+            raise HTTPException(status_code=400, detail="Invalid URL scheme.")
+
+        try:
+            async with httpx.AsyncClient() as client:
+                async with client.stream("GET", photo_url) as res:
+                    res.raise_for_status()
+                    mime_type = res.headers.get("content-type", "image/jpeg")
+                    if not mime_type.startswith("image/"):
+                        raise HTTPException(status_code=400, detail="URL must point to an image.")
+
+                    content_length = res.headers.get("content-length")
+                    if content_length and int(content_length) > 10 * 1024 * 1024:
+                        raise HTTPException(status_code=400, detail="Image is too large (max 10MB).")
+
+                    chunks = []
+                    bytes_read = 0
+                    async for chunk in res.aiter_bytes():
+                        chunks.append(chunk)
+                        bytes_read += len(chunk)
+                        if bytes_read > 10 * 1024 * 1024:
+                            raise HTTPException(status_code=400, detail="Image is too large (max 10MB).")
+
+                    file_content = b"".join(chunks)
+
+                    filename = photo_url.split("/")[-1]
+                    if not filename or "." not in filename:
+                        filename = "downloaded_photo.jpg"
+        except httpx.RequestError as e:
+            raise HTTPException(status_code=400, detail=f"Failed to download image from URL: {e}")
+        except Exception as e:
+            if isinstance(e, HTTPException):
+                raise e
+            raise HTTPException(status_code=400, detail=f"Failed to download image from URL: {e}")
+
     use_case = UploadPhoto(db)
     _, returned_lesson_id = await use_case.execute(
         lesson_id=lesson_id,
-        filename=photo.filename or "photo.jpg",
+        filename=filename,
         file_content=file_content,
-        mime_type=photo.content_type,
+        mime_type=mime_type,
         caption=caption,
         tags=tags,
         actor=actor,

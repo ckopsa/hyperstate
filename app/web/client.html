@@ -545,16 +545,40 @@ async function navigate(href) {
   }
 }
 
-async function submitAction(method, href, body = null, confirmMsg = null) {
+async function submitAction(method, href, body = null, confirmMsg = null, asForm = false) {
   if (confirmMsg && !confirm(confirmMsg)) return;
 
   const app = $('#app');
   try {
     const opts = {
       method,
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/vnd.hyperstate+json' },
+      headers: { 'Accept': 'application/vnd.hyperstate+json' },
     };
-    if (body) opts.body = JSON.stringify(body);
+    if (body) {
+      // Check if body contains File objects
+      let hasFiles = false;
+      for (const [key, val] of Object.entries(body)) {
+        if (val instanceof File) hasFiles = true;
+      }
+
+      if (hasFiles || asForm) {
+        const formData = new FormData();
+        for (const [key, val] of Object.entries(body)) {
+          if (val != null) {
+            // For arrays (like tags), append multiple times
+            if (Array.isArray(val)) {
+              val.forEach(v => formData.append(key, v));
+            } else {
+              formData.append(key, val);
+            }
+          }
+        }
+        opts.body = formData;
+      } else {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+      }
+    }
     const res = await fetch(href, opts);
     const data = await res.json();
 
@@ -764,6 +788,8 @@ function renderForm(section) {
   }
 
   // Submit button
+  const hasFileField = section.fields.some(f => f.type === 'file');
+
   const actions = h('div', { class: 'form-actions' },
     h('button', {
       class: `btn btn-${section.style === 'default' ? 'primary' : section.style || 'primary'}`,
@@ -773,7 +799,7 @@ function renderForm(section) {
         for (const [key, val] of Object.entries(formState)) {
           setNested(body, key, val);
         }
-        submitAction(section.method, section.href, body, section.confirm);
+        submitAction(section.method, section.href, body, section.confirm, hasFileField);
       },
     }, section.label || 'Submit'),
   );
@@ -795,6 +821,30 @@ function setNested(obj, path, value) {
 // ─── Field Renderer ───
 function renderField(field, formState, action) {
   const span = field.span === 2 ? 'span-2' : 'span-1';
+
+    if (field.type === 'file') {
+    return h('div', { class: `field ${span}` },
+      h('label', { class: 'field-label' },
+        field.label,
+        field.required ? h('span', { class: 'required' }, '*') : null,
+      ),
+      h('input', {
+        type: 'file',
+        class: `field-input ${field.error ? 'has-error' : ''}`,
+        accept: field.accept ? field.accept.join(',') : '',
+        disabled: field.disabled,
+        onChange: (e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            formState[field.name] = e.target.files[0];
+          } else {
+            formState[field.name] = null;
+          }
+        },
+      }),
+      field.help ? h('div', { class: 'field-help' }, field.help) : null,
+      field.error ? h('div', { class: 'field-error' }, field.error) : null,
+    );
+  }
 
   if (field.type === 'boolean') {
     return h('div', { class: `field ${span}` },
