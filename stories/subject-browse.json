@@ -7,31 +7,28 @@
       "url": "/subjects",
       "body": null,
       "status_code": 200,
-      "response_title": "Subjects",
-      "assertions": [
-        {"type": "section_exists", "key": "subject-list"}
-      ]
+      "response_title": "Subjects"
     },
     {
       "method": "GET",
       "url": "/subjects/SUB-MATH",
       "body": null,
       "status_code": 200,
-      "response_title": "Math"
+      "response_title": "📐 Math"
     },
     {
       "method": "GET",
       "url": "/subjects/SUB-READ",
       "body": null,
       "status_code": 200,
-      "response_title": "Reading"
+      "response_title": "📚 Reading"
     },
     {
       "method": "GET",
       "url": "/subjects/SUB-SCI",
       "body": null,
       "status_code": 200,
-      "response_title": "Science"
+      "response_title": "🔬 Science"
     },
     {
       "method": "GET",

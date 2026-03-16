@@ -14,7 +14,7 @@
       "url": "/lessons/LES-002/reset",
       "body": {},
       "status_code": 200,
-      "response_title": "Charlotte's Web - Chapter 3"
+      "response_title": "Chapter Book Reading"
     },
     {
       "method": "GET",
