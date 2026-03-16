@@ -829,6 +829,23 @@ function renderField(field, formState, action) {
     // Store reference for dependency updates
     selectEl.dataset.fieldName = field.name;
 
+    // Load dynamic options if provided and not dependent on another field
+    if (field.options_href && (!field.options || field.options.length === 0) && (!field.depends_on)) {
+      fetch(field.options_href, { headers: { 'Accept': 'application/json' } })
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.options) {
+            const placeholder = selectEl.options[0];
+            selectEl.innerHTML = '';
+            selectEl.appendChild(placeholder);
+            for (const opt of data.options) {
+              selectEl.appendChild(h('option', { value: opt.value, selected: formState[field.name] === opt.value }, opt.label));
+            }
+          }
+        })
+        .catch(err => console.error('Failed to load options for', field.name, err));
+    }
+
     return h('div', { class: `field ${span}` },
       h('label', { class: 'field-label' },
         field.label,

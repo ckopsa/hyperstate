@@ -54,20 +54,12 @@ class LessonListProjection:
                             name="subject_id",
                             label="Subject",
                             required=True,
-                            options=[
-                                FieldOption(value=s.id, label=s.name)
-                                for s in self.subjects
-                            ],
                             options_href="/api/subjects",
                         ),
                         SelectField(
                             name="student_id",
                             label="Student",
                             required=True,
-                            options=[
-                                FieldOption(value=s.id, label=s.name)
-                                for s in self.students
-                            ],
                             options_href="/api/students",
                         ),
                         TextareaField(name="description", label="Description"),
