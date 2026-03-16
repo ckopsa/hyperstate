@@ -41,15 +41,19 @@ class Step:
     body: dict[str, Any] | None
     status_code: int
     response_title: str | None
+    assertions: list[dict[str, Any]] | None = None
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "method": self.method,
             "url": self.url,
             "body": self.body,
             "status_code": self.status_code,
             "response_title": self.response_title,
         }
+        if self.assertions is not None:
+            d["assertions"] = self.assertions
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> Step:
@@ -59,6 +63,7 @@ class Step:
             body=d.get("body"),
             status_code=d["status_code"],
             response_title=d.get("response_title"),
+            assertions=d.get("assertions"),
         )
 
 
@@ -735,6 +740,91 @@ def print_help() -> None:
 
 # ── Story replay ────────────────────────────────────────────────────
 
+def _get_nested_val(data: dict, path: str) -> Any:
+    parts = path.split('.')
+    curr = data
+    for p in parts:
+        if isinstance(curr, dict) and p in curr:
+            curr = curr[p]
+        elif isinstance(curr, list) and p.isdigit() and int(p) < len(curr):
+            curr = curr[int(p)]
+        else:
+            return None
+    return curr
+
+def _find_section(sections: list[dict], key: str) -> dict | None:
+    for s in sections:
+        if s.get("key") == key:
+            return s
+        if "sections" in s:
+            found = _find_section(s["sections"], key)
+            if found:
+                return found
+    return None
+
+def _find_field(sections: list[dict], name: str) -> dict | None:
+    for s in sections:
+        if s.get("kind") == "action":
+            for f in s.get("fields", []):
+                if f.get("name") == name:
+                    return f
+        if "sections" in s:
+            found = _find_field(s["sections"], name)
+            if found:
+                return found
+    return None
+
+def evaluate_assertion(assertion: dict, data: dict) -> tuple[bool, str]:
+    type_ = assertion.get("type")
+
+    if type_ == "value_equals":
+        path = assertion.get("path", "")
+        expected = assertion.get("value")
+        actual = _get_nested_val(data, path)
+        if actual != expected:
+            return False, f"expected '{path}' to be {expected!r}, got {actual!r}"
+        return True, ""
+
+    elif type_ == "section_exists":
+        key = assertion.get("key", "")
+        section = _find_section(data.get("sections", []), key)
+        if not section:
+            return False, f"section with key '{key}' not found"
+        return True, ""
+
+    elif type_ == "field_options_count":
+        name = assertion.get("field", "")
+        op = assertion.get("op", "==")
+        value = assertion.get("value", 0)
+
+        field = _find_field(data.get("sections", []), name)
+        if not field:
+            return False, f"field '{name}' not found"
+
+        options = field.get("options", [])
+        count = len(options)
+
+        import operator
+        ops = {
+            "==": operator.eq,
+            "!=": operator.ne,
+            ">": operator.gt,
+            "<": operator.lt,
+            ">=": operator.ge,
+            "<=": operator.le,
+        }
+
+        op_fn = ops.get(op)
+        if not op_fn:
+            return False, f"unknown operator '{op}'"
+
+        if not op_fn(count, value):
+            return False, f"expected field '{name}' options count {op} {value}, got {count}"
+
+        return True, ""
+
+    return False, f"unknown assertion type '{type_}'"
+
 def replay_story(path: Path, until: int | None = None, base_url_override: str | None = None) -> bool:
     """Replay a saved story. Returns True if all steps pass."""
     story = Story.load(path)
@@ -768,6 +858,22 @@ def replay_story(path: Path, until: int | None = None, base_url_override: str | 
             print(f"       actual title:   {actual_title}")
         else:
             print(f"{_green('OK')}   {label} → {actual_title}")
+
+        if step.assertions:
+            assertions_failed = False
+            for i_assert, assertion in enumerate(step.assertions):
+                passed, err_msg = evaluate_assertion(assertion, data)
+                if not passed:
+                    if not assertions_failed:
+                        print(f"{_red('FAIL')} {label} (Assertion failed)")
+                        assertions_failed = True
+                    print(_red(f"       Assertion {i_assert + 1} failed: {err_msg}"))
+                    print(_dim(f"       {assertion}"))
+
+            if assertions_failed:
+                ok = False
+                last_step = i
+                break
 
     print()
     if ok:
