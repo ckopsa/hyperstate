@@ -11,3 +11,8 @@ wheels/
 
 # SQLite database (runtime artifact)
 *.db
+
+# Gas Town runtime directories
+.beads/
+.claude/
+.runtime/
