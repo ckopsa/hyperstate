@@ -111,49 +111,6 @@ from app.infrastructure.database import get_db, async_session, Base
 from app.web.deps import get_current_actor
 ```
 
-## Assigning Beads to Jules
-
-Jules is an autonomous coding agent that works on GitHub repos. To dispatch a
-bead to Jules:
-
-```bash
-# 1. Get the bead details
-bd show hyp-<id>
-
-# 2. Send to Jules (from anywhere — Jules uses the GitHub repo)
-uv run jules remote new \
-  --repo ckopsa/hyperstate \
-  --session "$(bd show hyp-<id>)"
-
-# 3. Note the session ID Jules returns, then record the handoff
-gt mail send mayor/ \
-  -s "🤝 HANDOFF: jules session created for hyp-<id>" \
-  -m "Created jules session ID: <session-id> for task hyp-<id>. Use 'uv run jules remote pull --session <session-id>' to check results later."
-
-# 4. Claim bead and attach the Jules progress command as notes
-bd update hyp-<id> --claim --notes "Jules session: uv run jules remote pull --session <session-id>"
-```
-
-**Checking results:**
-
-```bash
-# Pull the diff/result when Jules completes
-uv run jules remote pull --session <session-id>
-
-# List active sessions
-uv run jules remote list
-```
-
-**After Jules completes:**
-- Review the diff from `jules remote pull`
-- Apply it to the local clone at `/home/ckopsa/gt/hyp/mayor/rig/` if it looks good
-- Commit, push, close the bead: `bd close hyp-<id>`
-
-**Tips:**
-- Provide the full bead description as the `--session` prompt — Jules needs context
-- Include the HyperState QA Path from the bead description so Jules knows how to verify
-- Jules works directly on GitHub; local changes need to be pulled after
-
 ## QA Testing
 
 The CLI test client (`scripts/hsclient.py`) speaks the HyperState protocol:
