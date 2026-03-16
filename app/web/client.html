@@ -523,12 +523,19 @@ const h = (tag, attrs = {}, ...children) => {
 };
 
 // ─── State ───
-let currentHref = '/dashboard';
+let currentHref = window.location.pathname === '/' ? '/dashboard' : window.location.pathname;
 let flashTimer = null;
 
 // ─── Navigation ───
-async function navigate(href) {
+window.addEventListener('popstate', (e) => {
+  if (e.state && e.state.href) {
+    navigate(e.state.href, false);
+  }
+});
+
+async function navigate(href, pushState = true) {
   currentHref = href;
+  if (pushState) history.pushState({ href }, '', href);
   const app = $('#app');
   app.innerHTML = '';
   app.appendChild(h('div', { class: 'loading' }, 'Loading…'));
@@ -585,6 +592,7 @@ async function submitAction(method, href, body = null, confirmMsg = null, asForm
     // If it's a full HyperState response, render it
     if (data['$type'] === 'application/vnd.hyperstate+json') {
       currentHref = data.self || currentHref;
+      history.pushState({ href: currentHref }, '', currentHref);
       renderView(data);
     }
   } catch (err) {
@@ -1205,7 +1213,8 @@ function renderEmpty(section) {
 }
 
 // ─── Boot ───
-navigate(currentHref);
+history.replaceState({ href: currentHref }, '', currentHref);
+navigate(currentHref, false);
 </script>
 </body>
 </html>
