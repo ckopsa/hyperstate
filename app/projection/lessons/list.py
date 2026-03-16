@@ -1,10 +1,12 @@
 from typing import Iterable
 
 from app.domain.lessons.aggregate import Lesson
+from app.domain.students.aggregate import Student
+from app.domain.subjects.aggregate import Subject
 from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
 from app.hyperstate.sections import ListSection, ActionSection, ColumnDef, ListItem
 from app.hyperstate.fields import (
-    TextField, TextareaField, SelectField, DateField, FieldOption, DependsOn,
+    TextField, TextareaField, SelectField, DateField, FieldOption,
 )
 from app.hyperstate.nav import NavLink
 
@@ -16,9 +18,17 @@ TIME_SLOT_OPTIONS = [
 
 
 class LessonListProjection:
-    def __init__(self, lessons: Iterable[Lesson], actor: ActorContext):
+    def __init__(
+        self,
+        lessons: Iterable[Lesson],
+        actor: ActorContext,
+        subjects: list[Subject] | None = None,
+        students: list[Student] | None = None,
+    ):
         self.lessons = list(lessons)
         self.actor = actor
+        self.subjects = subjects or []
+        self.students = students or []
 
     def build(self) -> HyperStateResponse:
         return HyperStateResponse(
@@ -44,25 +54,21 @@ class LessonListProjection:
                             name="subject_id",
                             label="Subject",
                             required=True,
-                            options=[],
+                            options=[
+                                FieldOption(value=s.id, label=s.name)
+                                for s in self.subjects
+                            ],
                             options_href="/api/subjects",
-                            depends_on=DependsOn(
-                                fields=[],
-                                behavior="reload_options",
-                                options_href="/api/subjects",
-                            ),
                         ),
                         SelectField(
                             name="student_id",
                             label="Student",
                             required=True,
-                            options=[],
+                            options=[
+                                FieldOption(value=s.id, label=s.name)
+                                for s in self.students
+                            ],
                             options_href="/api/students",
-                            depends_on=DependsOn(
-                                fields=[],
-                                behavior="reload_options",
-                                options_href="/api/students",
-                            ),
                         ),
                         TextareaField(name="description", label="Description"),
                         DateField(name="scheduled_date", label="Scheduled Date"),

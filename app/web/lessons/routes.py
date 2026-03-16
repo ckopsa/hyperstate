@@ -18,6 +18,7 @@ from app.infrastructure.database import get_db
 from app.infrastructure.repositories.instruction_day_repo import InstructionDayRepository
 from app.infrastructure.repositories.lesson_repo import LessonRepository
 from app.infrastructure.repositories.portfolio_photo_repo import PortfolioPhotoRepository
+from app.infrastructure.repositories.student_repo import StudentRepository
 from app.infrastructure.repositories.subject_repo import SubjectRepository
 from app.projection.dashboard.view import DashboardProjection
 from app.projection.lessons.detail import LessonDetailProjection
@@ -54,7 +55,9 @@ async def list_lessons(
 ):
     repo = LessonRepository(db)
     lessons = await repo.list_all(student_id=student_id, subject_id=subject_id, state=state)
-    return LessonListProjection(lessons, actor).build()
+    subjects = await SubjectRepository(db).list_all()
+    students = await StudentRepository(db).list_all()
+    return LessonListProjection(lessons, actor, subjects=subjects, students=students).build()
 
 
 @router.post("", response_model=HyperStateResponse)
