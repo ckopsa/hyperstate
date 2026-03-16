@@ -45,6 +45,7 @@ class LessonListProjection:
                             label="Subject",
                             required=True,
                             options=[],
+                            options_href="/api/subjects",
                             depends_on=DependsOn(
                                 fields=[],
                                 behavior="reload_options",
@@ -56,6 +57,7 @@ class LessonListProjection:
                             label="Student",
                             required=True,
                             options=[],
+                            options_href="/api/students",
                             depends_on=DependsOn(
                                 fields=[],
                                 behavior="reload_options",
