@@ -428,6 +428,17 @@ def fill_form(fields: list[dict], existing: dict[str, Any] | None = None, hs_cli
                 _set_nested(values, name, current)
             continue
 
+        if ftype == "file":
+            print(f"    {label}{req_mark} (file path):")
+            if current:
+                print(f"      {_dim(f'current: {current}')}")
+            raw = input(f"      path: ").strip()
+            if raw:
+                _set_nested(values, name, {"__file__": raw})
+            elif current is not None:
+                _set_nested(values, name, current)
+            continue
+
         # Default: text-like input
         placeholder = f.get("placeholder", "")
         default_display = current if current is not None else placeholder
@@ -488,13 +499,85 @@ class HSClient:
     def fetch(self, href: str, method: str = "GET", body: dict | None = None) -> dict | None:
         """Make a request, record if story mode, return parsed JSON."""
         url = self.resolve_url(href)
+
+        # Check for files or form data
+        files = None
+        data = None
+        is_form = False
+
+        if body and method.upper() != "GET":
+            files = []
+            data = []
+            # Check if any field is a file
+            for k, v in body.items():
+                if isinstance(v, dict) and "__file__" in v:
+                    is_form = True
+
+            # For specific endpoints like portfolio that require Form data even without a file
+            if "portfolio" in url:
+                is_form = True
+
+            if is_form:
+                for k, v in body.items():
+                    if isinstance(v, dict) and "__file__" in v:
+                        try:
+                            import mimetypes
+                            path = v["__file__"]
+                            mime_type, _ = mimetypes.guess_type(path)
+                            mime_type = mime_type or "application/octet-stream"
+                            filename = path.split("/")[-1]
+                            files.append((k, (filename, open(path, "rb"), mime_type)))
+                        except Exception as e:
+                            print(f"Error reading file {path}: {e}")
+                    elif isinstance(v, list):
+                        for item in v:
+                            data.append((k, str(item)))
+                    else:
+                        data.append((k, str(v) if v is not None else ""))
+                if not files:
+                    files = None
+                # data is always set if is_form is True
+            else:
+                files = None
+                data = None
+
         try:
             if method.upper() == "GET":
                 resp = self.client.get(url, headers=HEADERS)
             else:
-                resp = self.client.request(
-                    method.upper(), url, headers=HEADERS, json=body,
-                )
+                if files or data is not None:
+                    # Remove Content-Type to let httpx determine it
+                    req_headers = {k: v for k, v in HEADERS.items() if k.lower() != "content-type"}
+                    if files:
+                        dict_data = {}
+                        for k, v in data:
+                            if k in dict_data:
+                                if isinstance(dict_data[k], list):
+                                    dict_data[k].append(v)
+                                else:
+                                    dict_data[k] = [dict_data[k], v]
+                            else:
+                                dict_data[k] = v
+                        resp = self.client.request(
+                            method.upper(), url, headers=req_headers, data=dict_data, files=files,
+                        )
+                    else:
+                        dict_data = {}
+                        for k, v in data:
+                            if k in dict_data:
+                                if isinstance(dict_data[k], list):
+                                    dict_data[k].append(v)
+                                else:
+                                    dict_data[k] = [dict_data[k], v]
+                            else:
+                                dict_data[k] = v
+                        resp = self.client.request(
+                            method.upper(), url, headers=req_headers, data=dict_data,
+                        )
+                else:
+                    resp = self.client.request(
+                        method.upper(), url, headers=HEADERS, json=body,
+                    )
             self.last_status = resp.status_code
         except httpx.ConnectError:
             print(_red(f"  Connection refused: {self.base_url}{url}"), file=sys.stderr)
@@ -899,6 +982,10 @@ def replay_story(path: Path, until: int | None = None, base_url_override: str | 
     data: dict | None = None
     last_step = 0
     for i, step in enumerate(story.steps[:stop_at]):
+        label = f"  [{i + 1}/{stop_at}] {step.method} {step.url}"
+        url = step.url
+        if "{self}" in url and hs.current and "self" in hs.current:
+            url = url.replace("{self}", hs.current["self"])
         url = step.url
         if url.startswith("nav:") and data is not None:
             rel = url[4:]

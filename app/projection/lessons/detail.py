@@ -218,9 +218,16 @@ class LessonDetailProjection:
             fields=[
                 FileField(
                     name="photo",
-                    label="Photo",
-                    required=True,
+                    label="Upload Photo",
+                    required=False,
                     accept=["image/*"],
+                    help="Choose an image file from your device",
+                ),
+                UrlField(
+                    name="photo_url",
+                    label="Or Paste Image URL",
+                    required=False,
+                    placeholder="https://example.com/image.jpg",
                 ),
                 TextField(
                     name="caption",
