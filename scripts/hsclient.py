@@ -37,21 +37,29 @@ DEFAULT_BASE = "http://localhost:8000"
 @dataclass
 class Step:
     """One recorded interaction."""
-    method: str
-    url: str
-    body: dict[str, Any] | None
-    status_code: int
-    response_title: str | None
+    method: str = "GET"
+    url: str = ""
+    body: dict[str, Any] | None = None
+    status_code: int = 200
+    response_title: str | None = None
     assertions: list[dict[str, Any]] | None = None
+    action: str | None = None       # action key to look up in current response
+    item: int | None = None         # list item index for item-level actions
 
     def to_dict(self) -> dict:
-        d = {
-            "method": self.method,
-            "url": self.url,
-            "body": self.body,
-            "status_code": self.status_code,
-            "response_title": self.response_title,
-        }
+        d: dict[str, Any] = {}
+        if self.action:
+            d["action"] = self.action
+            if self.item is not None:
+                d["item"] = self.item
+            if self.body:
+                d["body"] = self.body
+        else:
+            d["method"] = self.method
+            d["url"] = self.url
+            d["body"] = self.body
+            d["status_code"] = self.status_code
+        d["response_title"] = self.response_title
         if self.assertions is not None:
             d["assertions"] = self.assertions
         return d
@@ -59,12 +67,14 @@ class Step:
     @classmethod
     def from_dict(cls, d: dict) -> Step:
         return cls(
-            method=d["method"],
-            url=d["url"],
+            method=d.get("method", "GET"),
+            url=d.get("url", ""),
             body=d.get("body"),
-            status_code=d["status_code"],
+            status_code=d.get("status_code", 200),
             response_title=d.get("response_title"),
             assertions=d.get("assertions"),
+            action=d.get("action"),
+            item=d.get("item"),
         )
 
 
@@ -1000,6 +1010,42 @@ def _substitute_refs(value: Any, data: dict) -> Any:
     return value
 
 
+def _find_action_recursive(sections: list[dict], key: str) -> dict | None:
+    """Recursively search sections for a top-level action by key."""
+    for section in sections:
+        if section.get("kind") == "action" and section.get("key") == key:
+            return section
+        if section.get("kind") == "group":
+            result = _find_action_recursive(section.get("sections", []), key)
+            if result:
+                return result
+    return None
+
+
+def _find_action_in_response(data: dict, key: str, item_index: int | None = None) -> dict | None:
+    """Find an action by key in the response. For item actions, search list items."""
+    sections = data.get("sections", [])
+
+    if item_index is not None:
+        # Search in list item actions (check all list sections, including inside groups)
+        def search_lists(secs: list[dict]) -> dict | None:
+            for sec in secs:
+                if sec.get("kind") == "list":
+                    items = sec.get("items", [])
+                    if 0 <= item_index < len(items):
+                        for action in items[item_index].get("actions", []):
+                            if action.get("key") == key:
+                                return action
+                elif sec.get("kind") == "group":
+                    result = search_lists(sec.get("sections", []))
+                    if result:
+                        return result
+            return None
+        return search_lists(sections)
+
+    return _find_action_recursive(sections, key)
+
+
 def replay_story(path: Path, until: int | None = None, base_url_override: str | None = None) -> bool:
     """Replay a saved story. Returns True if all steps pass."""
     story = Story.load(path)
@@ -1016,28 +1062,53 @@ def replay_story(path: Path, until: int | None = None, base_url_override: str | 
     data: dict | None = None
     last_step = 0
     for i, step in enumerate(story.steps[:stop_at]):
-        label = f"  [{i + 1}/{stop_at}] {step.method} {step.url}"
+        method = step.method
         url = step.url
-        if "{self}" in url and data is not None and "self" in data:
-            url = url.replace("{self}", data["self"])
-        if url.startswith("nav:") and data is not None:
-            rel = url[4:]
-            nav = data.get("nav", [])
-            for link in nav:
-                if link.get("rel") == rel:
-                    url = link["href"]
-                    break
-            else:
-                print(_red(f"FAIL: Could not resolve dynamic nav link '{url}' from previous response."))
+        body = step.body
+
+        # Action-based step: look up action in current response
+        if step.action:
+            if data is None:
+                print(_red(f"FAIL: action '{step.action}' requires a previous response."))
                 ok = False
                 last_step = i
                 break
 
-        if data is not None:
-            url = _substitute_refs(url, data)
-        label = f"  [{i + 1}/{stop_at}] {step.method} {url}"
-        body = _substitute_refs(step.body, data) if data and step.body else step.body
-        data = hs.fetch(url, step.method, body)
+            item_label = f" (item {step.item})" if step.item is not None else ""
+            found = _find_action_in_response(data, step.action, step.item)
+            if not found:
+                print(_red(f"FAIL: action '{step.action}'{item_label} not found on current page."))
+                ok = False
+                last_step = i
+                break
+
+            method = found.get("method", "POST")
+            url = found["href"]
+            label = f"  [{i + 1}/{stop_at}] {step.action}{item_label} → {method} {url}"
+
+        else:
+            # URL-based step (GET navigation only)
+            if "{self}" in url and data is not None and "self" in data:
+                url = url.replace("{self}", data["self"])
+            if url.startswith("nav:") and data is not None:
+                rel = url[4:]
+                nav = data.get("nav", [])
+                for link in nav:
+                    if link.get("rel") == rel:
+                        url = link["href"]
+                        break
+                else:
+                    print(_red(f"FAIL: nav link '{rel}' not found on current page."))
+                    ok = False
+                    last_step = i
+                    break
+
+            if data is not None:
+                url = _substitute_refs(url, data)
+            label = f"  [{i + 1}/{stop_at}] {method} {url}"
+
+        body = _substitute_refs(body, data) if data and body else body
+        data = hs.fetch(url, method, body)
 
         if data is None:
             print(f"{_red('FAIL')} {label}")

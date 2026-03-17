@@ -5,52 +5,42 @@
     {
       "method": "GET",
       "url": "/curricula",
-      "body": null,
-      "status_code": 200,
       "response_title": "Curricula"
     },
     {
-      "method": "POST",
-      "url": "/curricula",
+      "action": "create-curriculum",
       "body": {
         "name": "3rd Grade Math Foundations",
         "description": "Core arithmetic and geometry for 3rd grade",
         "grade_level": "3rd"
       },
-      "status_code": 200,
       "response_title": "3rd Grade Math Foundations"
     },
     {
-      "method": "POST",
-      "url": "{self}/items",
+      "action": "add-item",
       "body": {
         "subject_id": "SUB-MATH",
         "title": "Place Value and Number Sense",
         "description": "Understanding hundreds, tens, and ones",
         "day_offset": 1
       },
-      "status_code": 200,
       "response_title": "3rd Grade Math Foundations"
     },
     {
-      "method": "POST",
-      "url": "{self}/items",
+      "action": "add-item",
       "body": {
         "subject_id": "SUB-READ",
         "title": "Phonics and Decoding Strategies",
         "description": "Blending consonant clusters and digraphs",
         "day_offset": 2
       },
-      "status_code": 200,
       "response_title": "3rd Grade Math Foundations"
     },
     {
-      "method": "POST",
-      "url": "{self}/items/reorder",
+      "action": "reorder-items",
       "body": {
         "item_ids": "{response:sections.1.items.1.data.id},{response:sections.1.items.0.data.id}"
       },
-      "status_code": 200,
       "response_title": "3rd Grade Math Foundations",
       "assertions": [
         {
@@ -66,15 +56,14 @@
       ]
     },
     {
-      "method": "POST",
-      "url": "{response:sections.1.items.0.actions.0.href}",
+      "action": "edit-item",
+      "item": 0,
       "body": {
         "subject_id": "SUB-READ",
         "title": "Advanced Phonics",
         "description": "Advanced consonant clusters and digraphs",
         "day_offset": 3
       },
-      "status_code": 200,
       "response_title": "3rd Grade Math Foundations",
       "assertions": [
         {
@@ -95,10 +84,9 @@
       ]
     },
     {
-      "method": "POST",
-      "url": "{response:sections.1.items.1.actions.2.href}",
+      "action": "remove-item",
+      "item": 1,
       "body": {},
-      "status_code": 200,
       "response_title": "3rd Grade Math Foundations",
       "assertions": [
         {
@@ -114,13 +102,11 @@
       ]
     },
     {
-      "method": "POST",
-      "url": "{self}/instantiate",
+      "action": "instantiate-curriculum",
       "body": {
         "student_id": "STU-DEMO",
         "start_date": "2026-04-07"
       },
-      "status_code": 200,
       "response_title": "Lessons",
       "assertions": [
         {
@@ -143,8 +129,6 @@
     {
       "method": "GET",
       "url": "nav:parent",
-      "body": null,
-      "status_code": 200,
       "response_title": "Daily Dashboard"
     }
   ],
