@@ -22,7 +22,7 @@ from app.web.curricula.routes import router as curricula_router
 from app.domain.students.errors import StudentNotFound
 from app.domain.subjects.errors import SubjectNotFound, SubjectError
 from app.domain.lessons.errors import LessonNotFound
-from app.domain.curricula.errors import CurriculumNotFound
+from app.domain.curricula.errors import CurriculumNotFound, CurriculumItemNotFound
 
 from app.infrastructure.database import engine, Base, async_session
 from app.infrastructure.models.student_model import StudentRow
@@ -180,6 +180,17 @@ async def curriculum_not_found_handler(request, exc: CurriculumNotFound):
         title="Not Found",
         self_=str(request.url.path),
         sections=[ContentSection(body=f"Curriculum {exc.curriculum_id} was not found.", format="plain")],
+        nav=[NavLink(label="All Curricula", href="/curricula", rel="collection")],
+    )
+    return JSONResponse(status_code=404, content=response.model_dump(by_alias=True, exclude_none=True))
+
+@app.exception_handler(CurriculumItemNotFound)
+async def curriculum_item_not_found_handler(request, exc: CurriculumItemNotFound):
+    response = HyperStateResponse(
+        view="error",
+        title="Not Found",
+        self_=str(request.url.path),
+        sections=[ContentSection(body=f"Curriculum item {exc.item_id} was not found.", format="plain")],
         nav=[NavLink(label="All Curricula", href="/curricula", rel="collection")],
     )
     return JSONResponse(status_code=404, content=response.model_dump(by_alias=True, exclude_none=True))
