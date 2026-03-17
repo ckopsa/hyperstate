@@ -228,7 +228,31 @@ Displays a table/list of items with optional inline actions per row.
     }
   ],
   "empty_message": "No resources.",
-  "pagination": null
+  "pagination": null,
+  "controls": {
+    "search": {
+      "href": "/lessons",
+      "param": "q",
+      "value": "fractions",
+      "placeholder": "Search lessons..."
+    },
+    "filters": [
+      {
+        "key": "status",
+        "label": "Status",
+        "clear_href": "/lessons?q=fractions",
+        "options": [
+          { "value": "pending", "label": "Pending", "href": "/lessons?q=fractions&status=pending", "active": false, "count": 3 },
+          { "value": "completed", "label": "Completed", "href": "/lessons?q=fractions&status=completed", "active": true, "count": 7 }
+        ]
+      }
+    ],
+    "sort_options": [
+      { "key": "title", "label": "Title", "href": "/lessons?q=fractions&status=completed&sort=title&dir=asc", "active": false },
+      { "key": "scheduled_date", "label": "Date", "href": "/lessons?q=fractions&status=completed&sort=date&dir=desc", "active": true, "direction": "desc" }
+    ],
+    "clear_href": "/lessons"
+  }
 }
 ```
 
@@ -259,6 +283,62 @@ Displays a table/list of items with optional inline actions per row.
 | `total` | int? | Total item count |
 | `page` | int | Current page number |
 | `per_page` | int | Items per page |
+
+**ListControls** (optional `controls` field):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `search` | SearchControl? | Search box configuration |
+| `filters` | FilterControl[] | Available filter groups |
+| `sort_options` | SortOption[] | Available sort options |
+| `clear_href` | string? | URL to clear all active controls |
+
+**SearchControl:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `href` | string | Form action URL (client submits GET with `?{param}=value`) |
+| `param` | string | Query parameter name (default `"q"`) |
+| `value` | string? | Current search query |
+| `placeholder` | string? | Input placeholder text |
+
+**FilterControl:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `key` | string | Stable identifier for this filter group |
+| `label` | string | Display label (e.g. "Status") |
+| `options` | FilterOption[] | Selectable filter values |
+| `clear_href` | string? | URL to clear just this filter (keeps others) |
+
+**FilterOption:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `value` | string | Filter value |
+| `label` | string | Display label |
+| `href` | string | GET URL to apply this value (preserves current search/other filters) |
+| `active` | bool | Whether this value is currently selected |
+| `count` | int? | Optional result-count hint |
+
+**SortOption:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `key` | string | Column key (matches `ColumnDef.key`) |
+| `label` | string | Display label |
+| `href` | string | GET URL to apply this sort (preserves current search/filters) |
+| `active` | bool | Whether this is the current sort |
+| `direction` | enum? | Current sort direction (`"asc"` or `"desc"`) when `active=true` |
+
+**Design principles for `controls`:**
+
+- `controls` is `null` when search/filter/sort is not available for this list.
+- All hrefs are server-computed and ready to navigate — the client never constructs URLs.
+- Each `FilterOption.href` and `SortOption.href` preserves the current state of all other
+  active controls (search query, other filters, current page reset to 1).
+- `FilterControl.clear_href` clears only that filter while preserving others.
+- `ListControls.clear_href` resets all controls to the unfiltered base URL.
 
 ### `content` — Rich Text Block
 

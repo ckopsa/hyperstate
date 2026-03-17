@@ -74,6 +74,48 @@ class Pagination(BaseModel):
     per_page: int
 
 
+class SortOption(BaseModel):
+    """A column the server can sort by. href is ready-to-use (preserves current filters/search)."""
+    key: str
+    label: str
+    href: str                                       # GET URL to apply this sort
+    active: bool = False                            # is this the current sort?
+    direction: Literal["asc", "desc"] | None = None  # current direction if active
+
+
+class FilterOption(BaseModel):
+    """A single selectable value for a filter. href is ready-to-use (preserves current state)."""
+    value: str
+    label: str
+    href: str                                       # GET URL to apply this filter value
+    active: bool = False                            # is this value currently selected?
+    count: int | None = None                        # optional result-count hint
+
+
+class FilterControl(BaseModel):
+    """A group of related filter options (e.g. 'Status', 'Subject')."""
+    key: str
+    label: str
+    options: list[FilterOption]
+    clear_href: str | None = None                   # URL to clear just this filter
+
+
+class SearchControl(BaseModel):
+    """Search box. Client submits GET to href with ?{param}=value."""
+    href: str
+    param: str = "q"
+    value: str | None = None                        # current search query
+    placeholder: str | None = None
+
+
+class ListControls(BaseModel):
+    """Optional search/filter/sort controls advertised by the server."""
+    search: SearchControl | None = None
+    filters: list[FilterControl] = []
+    sort_options: list[SortOption] = []
+    clear_href: str | None = None                   # URL to clear all active controls
+
+
 class ListSection(BaseModel):
     kind: Literal["list"] = "list"
     title: str | None = None
@@ -81,6 +123,7 @@ class ListSection(BaseModel):
     items: list[ListItem]
     empty_message: str = "No items."
     pagination: Pagination | None = None
+    controls: ListControls | None = None            # search/filter/sort contract
 
 
 # ──────────────────────────────────────────────
