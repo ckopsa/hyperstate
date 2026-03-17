@@ -9,6 +9,7 @@ from app.infrastructure.database import get_db
 from app.infrastructure.repositories.curriculum_repo import CurriculumRepository
 from app.application.curricula.create_curriculum import CreateCurriculum
 from app.application.curricula.add_curriculum_item import AddCurriculumItem
+from app.application.curricula.edit_curriculum_item import EditCurriculumItem
 from app.application.curricula.remove_curriculum_item import RemoveCurriculumItem
 from app.application.curricula.reorder_curriculum_items import ReorderCurriculumItems
 from app.application.curricula.instantiate_curriculum import InstantiateCurriculum
@@ -37,6 +38,12 @@ class ReorderReq(BaseModel):
 class InstantiateReq(BaseModel):
     student_id: str
     start_date: date
+
+class EditItemReq(BaseModel):
+    title: str
+    subject_id: str
+    description: str | None = None
+    day_offset: int | None = None
 
 class AddItemResourceReq(BaseModel):
     resource_type: str
@@ -91,6 +98,25 @@ async def add_curriculum_item(
         curriculum_id=curriculum_id,
         subject_id=req.subject_id,
         title=req.title,
+        description=req.description,
+        day_offset=req.day_offset,
+        actor=actor,
+    )
+
+@router.post("/curricula/{curriculum_id}/items/{item_id}/edit", response_model=HyperStateResponse)
+async def edit_curriculum_item(
+    curriculum_id: str,
+    item_id: str,
+    req: EditItemReq,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    use_case = EditCurriculumItem(db)
+    return await use_case.execute(
+        curriculum_id=curriculum_id,
+        item_id=item_id,
+        title=req.title,
+        subject_id=req.subject_id,
         description=req.description,
         day_offset=req.day_offset,
         actor=actor,

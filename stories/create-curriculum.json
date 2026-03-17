@@ -67,6 +67,54 @@
     },
     {
       "method": "POST",
+      "url": "{response:sections.1.items.0.actions.0.href}",
+      "body": {
+        "subject_id": "SUB-READ",
+        "title": "Advanced Phonics",
+        "description": "Advanced consonant clusters and digraphs",
+        "day_offset": 3
+      },
+      "status_code": 200,
+      "response_title": "3rd Grade Math Foundations",
+      "assertions": [
+        {
+          "type": "value_equals",
+          "path": "flash.title",
+          "value": "Item Updated"
+        },
+        {
+          "type": "value_equals",
+          "path": "sections.1.items.0.data.title",
+          "value": "Advanced Phonics"
+        },
+        {
+          "type": "value_equals",
+          "path": "sections.1.items.0.data.day_offset",
+          "value": "+3"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "url": "{response:sections.1.items.1.actions.2.href}",
+      "body": {},
+      "status_code": 200,
+      "response_title": "3rd Grade Math Foundations",
+      "assertions": [
+        {
+          "type": "value_equals",
+          "path": "flash.title",
+          "value": "Item Removed"
+        },
+        {
+          "type": "value_equals",
+          "path": "sections.1.items.0.data.title",
+          "value": "Advanced Phonics"
+        }
+      ]
+    },
+    {
+      "method": "POST",
       "url": "{self}/instantiate",
       "body": {
         "student_id": "STU-DEMO",
@@ -83,22 +131,12 @@
         {
           "type": "value_equals",
           "path": "sections.1.items.0.data.title",
-          "value": "Place Value and Number Sense"
+          "value": "Advanced Phonics"
         },
         {
           "type": "value_equals",
           "path": "sections.1.items.0.data.scheduled_date",
-          "value": "2026-04-08"
-        },
-        {
-          "type": "value_equals",
-          "path": "sections.1.items.1.data.title",
-          "value": "Phonics and Decoding Strategies"
-        },
-        {
-          "type": "value_equals",
-          "path": "sections.1.items.1.data.scheduled_date",
-          "value": "2026-04-09"
+          "value": "2026-04-10"
         }
       ]
     },

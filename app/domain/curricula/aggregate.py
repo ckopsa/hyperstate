@@ -20,6 +20,16 @@ class Curriculum:
         self.items.append(item)
         self._resequence()
 
+    def update_item(self, item_id: str, title: str, subject_id: str, description: str | None, day_offset: int | None) -> None:
+        for item in self.items:
+            if item.id == item_id:
+                item.title = title
+                item.subject_id = subject_id
+                item.description = description
+                item.day_offset = day_offset
+                return
+        raise ValueError(f"Item {item_id} not found")
+
     def remove_item(self, item_id: str) -> None:
         self.items = [item for item in self.items if item.id != item_id]
         self._resequence()

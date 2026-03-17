@@ -73,6 +73,18 @@ class CurriculumDetailProjection:
                             },
                             actions=[
                                 ActionSection(
+                                    key="edit-item",
+                                    label="Edit",
+                                    method="POST",
+                                    href=f"/curricula/{self.curriculum.id}/items/{item.id}/edit",
+                                    fields=[
+                                        SelectField(name="subject_id", label="Subject", required=True, options_href="/api/subjects", value=item.subject_id),
+                                        TextField(name="title", label="Title", required=True, value=item.title),
+                                        TextareaField(name="description", label="Description", value=item.description or ""),
+                                        NumberField(name="day_offset", label="Day Offset", required=False, value=item.day_offset),
+                                    ],
+                                ),
+                                ActionSection(
                                     key="add-resource",
                                     label="Add Resource",
                                     method="POST",
