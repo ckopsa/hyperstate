@@ -14,6 +14,7 @@ from app.application.lessons.upload_photo import UploadPhoto
 from app.domain.lessons.errors import LessonError, LessonNotFound
 from app.domain.lessons.states import LessonState
 from hyperstate.flash import Flash
+from hyperstate.forms import FieldErrors
 from hyperstate.response import ActorContext, HyperStateResponse
 from app.infrastructure.database import get_db
 from app.infrastructure.repositories.instruction_day_repo import InstructionDayRepository
@@ -67,6 +68,41 @@ async def create_lesson(
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ):
+    # Validate fields and return form with inline errors if invalid
+    errors = FieldErrors()
+    if not body.title.strip():
+        errors.add("title", "Title cannot be empty.")
+    if not body.subject_id:
+        errors.add("subject_id", "Please select a subject.")
+    if not body.student_id:
+        errors.add("student_id", "Please select a student.")
+
+    if errors:
+        # Re-render the list page with the form errors applied
+        repo = LessonRepository(db)
+        lessons = await repo.list_all()
+        subjects = await SubjectRepository(db).list_all()
+        students = await StudentRepository(db).list_all()
+        projection = LessonListProjection(lessons, actor, subjects=subjects, students=students)
+        response = projection.build()
+
+        # Find the create form action and apply errors + submitted values
+        submitted = {
+            "title": body.title,
+            "subject_id": body.subject_id,
+            "student_id": body.student_id,
+            "description": body.description,
+            "scheduled_date": body.scheduled_date.isoformat() if body.scheduled_date else "",
+            "time_slot": body.time_slot,
+        }
+        for i, section in enumerate(response.sections):
+            if hasattr(section, "key") and section.key == "create-lesson":
+                response.sections[i], flash = errors.apply(section, submitted)
+                response.flash = flash
+                break
+
+        return response
+
     use_case = CreateLesson(db)
     return await use_case.execute(
         subject_id=body.subject_id,

@@ -6,7 +6,7 @@ This is the core principle: **errors are views, not exceptions.**
 
 ## Error Categories
 
-There are exactly 5 error categories in a HyperState app. Each maps to an HTTP
+There are 6 error categories in a HyperState app. Each maps to an HTTP
 status code and a specific response shape.
 
 | Category | HTTP | View | When |
@@ -14,6 +14,7 @@ status code and a specific response shape.
 | Not Found | 404 | `error` | Aggregate doesn't exist |
 | Business Rule Violation | 422 | `error` | Domain rejects the action |
 | Validation Error | 422 | `error` | Request body fails schema validation |
+| Field-Level Errors | 422 | original | Form resubmission with inline errors |
 | Not Authenticated | 401 | `form` | No valid identity |
 | Not Authorized | 403 | `error` | Identity lacks permission |
 
@@ -139,7 +140,96 @@ async def validation_error_handler(request, exc: RequestValidationError):
     return JSONResponse(status_code=422, content=response.model_dump(by_alias=True, exclude_none=True))
 ```
 
-### 4. Not Authenticated (401)
+### 4. Field-Level Errors (422) — Form Resubmission
+
+The most common form interaction: the user submits a form, some fields are
+invalid, and the server returns **the same page** with the form pre-filled
+and inline error messages on the failing fields.
+
+This is different from a Pydantic validation error (which catches malformed
+request bodies). Field-level errors are **domain validation** — the body is
+well-formed JSON, but the values don't satisfy business rules.
+
+**The pattern:**
+
+1. Validate the submitted values in the route handler
+2. If invalid, re-render the original view (list page, detail page, etc.)
+3. Find the form action section and apply errors + submitted values
+4. Return the response (HTTP 200 — it's a normal page with error annotations)
+
+**Using the `FieldErrors` helper (`hyperstate/forms.py`):**
+
+```python
+from hyperstate.forms import FieldErrors
+
+@router.post("", response_model=HyperStateResponse)
+async def create_item(
+    body: CreateItemBody,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    # 1. Validate
+    errors = FieldErrors()
+    if not body.title.strip():
+        errors.add("title", "Title cannot be empty.")
+    if not body.category_id:
+        errors.add("category_id", "Please select a category.")
+
+    # 2. If errors, return the form with inline errors
+    if errors:
+        items = await repo.list_all()
+        response = ItemListProjection(items, actor).build()
+
+        submitted = {"title": body.title, "category_id": body.category_id}
+        for i, section in enumerate(response.sections):
+            if hasattr(section, "key") and section.key == "create-item":
+                response.sections[i], flash = errors.apply(section, submitted)
+                response.flash = flash
+                break
+
+        return response
+
+    # 3. No errors — proceed with creation
+    use_case = CreateItem(db)
+    return await use_case.execute(title=body.title, actor=actor)
+```
+
+**What `FieldErrors.apply()` does:**
+
+- Deep-copies the action section (doesn't mutate the original)
+- Sets `value` on each field to the submitted value (preserving user input)
+- Sets `error` on each failing field
+- Returns a flash notification summarizing the problem
+
+**What the client sees:**
+
+The response is a normal page (same view type, same sections) with the form
+action containing fields that have `error` set. The client already renders
+`field.error` as red text below the field and adds a `has-error` class to
+the input — no special handling needed.
+
+**Key design decisions:**
+
+- **HTTP 200, not 422.** The response is a valid, renderable page. The form
+  just happens to have error annotations. Using 422 would make the client
+  think something broke — but the server is doing exactly what it should:
+  re-rendering the form with feedback.
+
+- **Return the whole page, not just the form.** The client doesn't know
+  how to splice a form fragment into an existing page. Return the complete
+  view (list page with the form section) so the client can render it
+  normally.
+
+- **Preserve submitted values.** Setting `value` on each field means the
+  user doesn't lose their work. They fix the errors and resubmit.
+
+- **Flash for summary.** The flash gives a top-level "something went wrong"
+  signal. The field errors give specifics.
+
+**Reference implementation:** See `app/web/lessons/routes.py`, `create_lesson`
+endpoint.
+
+### 5. Not Authenticated (401)
 
 See [AUTH.md](AUTH.md) for full details. The key: the 401 response includes
 a login form, so the client just renders it.
@@ -161,7 +251,7 @@ async def not_authenticated_handler(request, exc: NotAuthenticated):
     return JSONResponse(status_code=401, content=response.model_dump(by_alias=True, exclude_none=True))
 ```
 
-### 5. Not Authorized (403)
+### 6. Not Authorized (403)
 
 ```python
 from hyperstate.auth import NotAuthorized
