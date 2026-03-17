@@ -2,9 +2,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.curricula.errors import CurriculumNotFound
 from app.infrastructure.repositories.curriculum_repo import CurriculumRepository
-from app.hyperstate.response import HyperStateResponse, ActorContext
+from hyperstate.response import HyperStateResponse, ActorContext
 from app.projection.curricula.item_detail import CurriculumItemDetailProjection
-from app.hyperstate.flash import Flash
+from hyperstate.flash import Flash
 
 class RemoveCurriculumItemResource:
     def __init__(self, db: AsyncSession):

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.hyperstate.dependencies import OptionsResponse
-from app.hyperstate.fields import FieldOption
+from hyperstate.dependencies import OptionsResponse
+from hyperstate.fields import FieldOption
 from app.infrastructure.database import get_db
 from app.infrastructure.repositories.subject_repo import SubjectRepository
 

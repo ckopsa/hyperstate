@@ -1,7 +1,7 @@
 import pytest
 
 from app.domain.curricula.aggregate import Curriculum
-from app.hyperstate.response import ActorContext
+from hyperstate.response import ActorContext
 from app.projection.curricula.list import CurriculumListProjection
 
 @pytest.fixture

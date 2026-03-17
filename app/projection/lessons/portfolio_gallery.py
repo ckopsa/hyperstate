@@ -2,10 +2,10 @@ import os
 from typing import List
 
 from app.domain.lessons.entities import PortfolioPhoto
-from app.hyperstate.flash import Flash
-from app.hyperstate.nav import NavLink
-from app.hyperstate.response import ActorContext, HyperStateResponse, ViewContext
-from app.hyperstate.sections import ColumnDef, EmptySection, ListItem, ListSection, Section
+from hyperstate.flash import Flash
+from hyperstate.nav import NavLink
+from hyperstate.response import ActorContext, HyperStateResponse, ViewContext
+from hyperstate.sections import ColumnDef, EmptySection, ListItem, ListSection, Section
 
 _UPLOAD_URL_PREFIX = "/uploads/portfolio"
 

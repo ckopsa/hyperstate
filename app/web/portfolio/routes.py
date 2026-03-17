@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.hyperstate.response import ActorContext, HyperStateResponse
+from hyperstate.response import ActorContext, HyperStateResponse
 from app.infrastructure.database import get_db
 from app.infrastructure.repositories.portfolio_photo_repo import PortfolioPhotoRepository
 from app.projection.lessons.portfolio_gallery import PortfolioGalleryProjection

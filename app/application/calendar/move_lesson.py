@@ -4,8 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.lessons.errors import LessonNotFound
 from app.infrastructure.repositories.lesson_repo import LessonRepository
-from app.hyperstate.response import HyperStateResponse, ActorContext
-from app.hyperstate.flash import Flash
+from hyperstate.response import HyperStateResponse, ActorContext
+from hyperstate.flash import Flash
 
 
 class MoveLesson:

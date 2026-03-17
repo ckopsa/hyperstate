@@ -5,10 +5,10 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import os
 
-from app.hyperstate.middleware import HyperStateMiddleware
-from app.hyperstate.response import HyperStateResponse
-from app.hyperstate.sections import ContentSection
-from app.hyperstate.nav import NavLink
+from hyperstate.middleware import HyperStateMiddleware
+from hyperstate.response import HyperStateResponse
+from hyperstate.sections import ContentSection
+from hyperstate.nav import NavLink
 from app.web.students.routes import router as students_router
 from app.web.students.options import router as students_options_router
 from app.web.subjects.routes import router as subjects_router

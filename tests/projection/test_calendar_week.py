@@ -4,7 +4,7 @@ from datetime import date
 from app.domain.lessons.aggregate import Lesson
 from app.domain.lessons.states import LessonState
 from app.domain.subjects.aggregate import Subject
-from app.hyperstate.response import ActorContext
+from hyperstate.response import ActorContext
 from app.projection.calendar.week import CalendarWeekProjection
 
 

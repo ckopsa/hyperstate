@@ -1,13 +1,13 @@
 from app.domain.lessons.aggregate import Lesson
 from app.domain.lessons.states import LessonState
 from app.domain.subjects.aggregate import Subject
-from app.hyperstate.flash import Flash
-from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
-from app.hyperstate.sections import (
+from hyperstate.flash import Flash
+from hyperstate.response import HyperStateResponse, ViewContext, ActorContext
+from hyperstate.sections import (
     SummarySection, SummaryItem, ListSection, ColumnDef, ListItem,
     TimelineSection, TimelineEvent, EmptySection, ActionSection, Section,
 )
-from app.hyperstate.nav import NavLink
+from hyperstate.nav import NavLink
 
 _SCHOOL_YEAR_DAYS = 180
 

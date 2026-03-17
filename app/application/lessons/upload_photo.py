@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.lessons.entities import PortfolioPhoto
 from app.domain.lessons.errors import LessonNotFound
-from app.hyperstate.response import ActorContext
+from hyperstate.response import ActorContext
 from app.infrastructure.repositories.lesson_repo import LessonRepository
 from app.infrastructure.repositories.portfolio_photo_repo import PortfolioPhotoRepository
 

@@ -1,7 +1,7 @@
 # scripts/generate_schema.py
 
 import json
-from app.hyperstate.response import HyperStateResponse
+from hyperstate.response import HyperStateResponse
 
 schema = HyperStateResponse.model_json_schema()
 print(json.dumps(schema, indent=2))

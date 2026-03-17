@@ -3,12 +3,12 @@ from typing import Iterable
 from app.domain.lessons.aggregate import Lesson
 from app.domain.students.aggregate import Student
 from app.domain.subjects.aggregate import Subject
-from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
-from app.hyperstate.sections import ListSection, ActionSection, ColumnDef, ListItem
-from app.hyperstate.fields import (
+from hyperstate.response import HyperStateResponse, ViewContext, ActorContext
+from hyperstate.sections import ListSection, ActionSection, ColumnDef, ListItem
+from hyperstate.fields import (
     TextField, TextareaField, SelectField, DateField, FieldOption,
 )
-from app.hyperstate.nav import NavLink
+from hyperstate.nav import NavLink
 
 
 TIME_SLOT_OPTIONS = [

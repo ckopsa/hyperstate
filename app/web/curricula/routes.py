@@ -18,7 +18,7 @@ from app.application.curricula.remove_curriculum_item_resource import RemoveCurr
 from app.projection.curricula.list import CurriculumListProjection
 from app.projection.curricula.detail import CurriculumDetailProjection
 from app.projection.curricula.item_detail import CurriculumItemDetailProjection
-from app.hyperstate.response import HyperStateResponse, ActorContext
+from hyperstate.response import HyperStateResponse, ActorContext
 from app.web.deps import get_current_actor
 
 router = APIRouter(tags=["curricula"])

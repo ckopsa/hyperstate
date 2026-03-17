@@ -6,7 +6,7 @@ import pytest
 from app.domain.lessons.aggregate import Lesson, next_weekday
 from app.domain.lessons.states import LessonState
 from app.domain.subjects.aggregate import Subject
-from app.hyperstate.response import ActorContext
+from hyperstate.response import ActorContext
 from app.projection.dashboard.view import DashboardProjection
 
 

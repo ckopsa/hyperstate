@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.students.aggregate import Student
 from app.domain.students.errors import StudentNotFound
 from app.infrastructure.repositories.student_repo import StudentRepository
-from app.hyperstate.response import HyperStateResponse, ActorContext
-from app.hyperstate.flash import Flash
+from hyperstate.response import HyperStateResponse, ActorContext
+from hyperstate.flash import Flash
 from app.projection.students.detail import StudentDetailProjection
 
 

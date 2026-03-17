@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from app.hyperstate.response import ActorContext
+from hyperstate.response import ActorContext
 from app.infrastructure.models.instruction_day_model import InstructionDayRow
 from app.projection.reports.instruction_days import InstructionDaysProjection
 

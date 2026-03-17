@@ -6,8 +6,8 @@ from app.domain.curricula.errors import CurriculumNotFound
 from app.infrastructure.repositories.curriculum_repo import CurriculumRepository
 from app.application.lessons.create_lesson import CreateLesson
 from app.application.lessons.add_resource import AddResource
-from app.hyperstate.response import HyperStateResponse, ActorContext
-from app.hyperstate.flash import Flash
+from hyperstate.response import HyperStateResponse, ActorContext
+from hyperstate.flash import Flash
 from app.projection.lessons.list import LessonListProjection
 from app.infrastructure.repositories.student_repo import StudentRepository
 from app.domain.students.errors import StudentNotFound

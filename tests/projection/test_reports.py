@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.hyperstate.response import ActorContext
+from hyperstate.response import ActorContext
 from app.web.reports.routes import GenerateTranscriptBody, _write_csv, _write_pdf
 
 

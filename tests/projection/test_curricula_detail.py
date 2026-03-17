@@ -2,8 +2,8 @@ import pytest
 
 from app.domain.curricula.aggregate import Curriculum
 from app.domain.curricula.entities import CurriculumItem, CurriculumItemResource
-from app.hyperstate.response import ActorContext
-from app.hyperstate.flash import Flash
+from hyperstate.response import ActorContext
+from hyperstate.flash import Flash
 from app.projection.curricula.detail import CurriculumDetailProjection
 
 @pytest.fixture

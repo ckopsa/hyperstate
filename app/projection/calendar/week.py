@@ -5,17 +5,17 @@ from datetime import date
 from app.domain.lessons.aggregate import Lesson
 from app.domain.lessons.states import LessonState
 from app.domain.subjects.aggregate import Subject
-from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
-from app.hyperstate.flash import Flash
-from app.hyperstate.nav import NavLink
-from app.hyperstate.sections import (
+from hyperstate.response import HyperStateResponse, ViewContext, ActorContext
+from hyperstate.flash import Flash
+from hyperstate.nav import NavLink
+from hyperstate.sections import (
     SummarySection, SummaryItem,
     GroupSection, ListSection, ColumnDef, ListItem,
     ActionSection,
     EmptySection,
     Section,
 )
-from app.hyperstate.fields import (
+from hyperstate.fields import (
     DateField, SelectField, NumberField, FieldOption, HiddenField,
 )
 

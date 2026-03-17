@@ -4,12 +4,12 @@ from typing import List
 from app.domain.lessons.aggregate import Lesson
 from app.domain.lessons.entities import PortfolioPhoto
 from app.domain.lessons.states import LessonState
-from app.hyperstate.display import PropertyItem
-from app.hyperstate.fields import FileField, FieldOption, MultiSelectField, SelectField, TextField, UrlField
-from app.hyperstate.flash import Flash
-from app.hyperstate.nav import NavLink
-from app.hyperstate.response import ActorContext, HyperStateResponse, ViewContext
-from app.hyperstate.sections import (
+from hyperstate.display import PropertyItem
+from hyperstate.fields import FileField, FieldOption, MultiSelectField, SelectField, TextField, UrlField
+from hyperstate.flash import Flash
+from hyperstate.nav import NavLink
+from hyperstate.response import ActorContext, HyperStateResponse, ViewContext
+from hyperstate.sections import (
     ActionCondition,
     ActionSection,
     ColumnDef,

@@ -1,10 +1,10 @@
 from typing import Iterable
 
 from app.domain.curricula.aggregate import Curriculum
-from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
-from app.hyperstate.sections import ListSection, ActionSection, ColumnDef, ListItem
-from app.hyperstate.fields import TextField, TextareaField, SelectField, FieldOption
-from app.hyperstate.nav import NavLink
+from hyperstate.response import HyperStateResponse, ViewContext, ActorContext
+from hyperstate.sections import ListSection, ActionSection, ColumnDef, ListItem
+from hyperstate.fields import TextField, TextareaField, SelectField, FieldOption
+from hyperstate.nav import NavLink
 
 GRADE_OPTIONS = [
     FieldOption(value="K", label="Kindergarten"),

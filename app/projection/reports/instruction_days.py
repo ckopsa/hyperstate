@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from datetime import date
 
-from app.hyperstate.fields import DateField, TextareaField
-from app.hyperstate.flash import Flash
-from app.hyperstate.nav import NavLink
-from app.hyperstate.response import ActorContext, HyperStateResponse, ViewContext
-from app.hyperstate.sections import (
+from hyperstate.fields import DateField, TextareaField
+from hyperstate.flash import Flash
+from hyperstate.nav import NavLink
+from hyperstate.response import ActorContext, HyperStateResponse, ViewContext
+from hyperstate.sections import (
     ActionSection,
     ColumnDef,
     EmptySection,

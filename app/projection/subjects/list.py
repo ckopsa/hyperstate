@@ -1,11 +1,11 @@
 from typing import Iterable
 
 from app.domain.subjects.aggregate import Subject
-from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
-from app.hyperstate.flash import Flash
-from app.hyperstate.sections import Section, ListSection, ActionSection, EmptySection, ColumnDef, ListItem
-from app.hyperstate.fields import TextField, SelectField, TextareaField, FieldOption
-from app.hyperstate.nav import NavLink
+from hyperstate.response import HyperStateResponse, ViewContext, ActorContext
+from hyperstate.flash import Flash
+from hyperstate.sections import Section, ListSection, ActionSection, EmptySection, ColumnDef, ListItem
+from hyperstate.fields import TextField, SelectField, TextareaField, FieldOption
+from hyperstate.nav import NavLink
 
 
 COLOR_OPTIONS = [

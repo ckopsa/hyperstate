@@ -4,8 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.lessons.aggregate import next_weekday
 from app.domain.lessons.errors import LessonError, LessonNotFound
-from app.hyperstate.flash import Flash
-from app.hyperstate.response import ActorContext, HyperStateResponse
+from hyperstate.flash import Flash
+from hyperstate.response import ActorContext, HyperStateResponse
 from app.infrastructure.repositories.lesson_repo import LessonRepository
 from app.infrastructure.repositories.subject_repo import SubjectRepository
 from app.projection.dashboard.view import DashboardProjection

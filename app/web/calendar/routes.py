@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.hyperstate.response import HyperStateResponse, ActorContext
+from hyperstate.response import HyperStateResponse, ActorContext
 from app.infrastructure.database import get_db
 from app.infrastructure.repositories.lesson_repo import LessonRepository
 from app.infrastructure.repositories.subject_repo import SubjectRepository

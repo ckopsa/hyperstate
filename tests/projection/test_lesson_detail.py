@@ -4,7 +4,7 @@ import pytest
 
 from app.domain.lessons.aggregate import Lesson
 from app.domain.lessons.states import LessonState
-from app.hyperstate.response import ActorContext
+from hyperstate.response import ActorContext
 from app.projection.lessons.detail import LessonDetailProjection
 
 

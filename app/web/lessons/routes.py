@@ -13,8 +13,8 @@ from app.application.lessons.transition_lesson import TransitionLesson
 from app.application.lessons.upload_photo import UploadPhoto
 from app.domain.lessons.errors import LessonNotFound
 from app.domain.lessons.states import LessonState
-from app.hyperstate.flash import Flash
-from app.hyperstate.response import ActorContext, HyperStateResponse
+from hyperstate.flash import Flash
+from hyperstate.response import ActorContext, HyperStateResponse
 from app.infrastructure.database import get_db
 from app.infrastructure.repositories.instruction_day_repo import InstructionDayRepository
 from app.infrastructure.repositories.lesson_repo import LessonRepository

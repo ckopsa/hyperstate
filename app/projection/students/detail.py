@@ -1,9 +1,9 @@
 from app.domain.students.aggregate import Student
-from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
-from app.hyperstate.flash import Flash
-from app.hyperstate.nav import NavLink
-from app.hyperstate.sections import PropertiesSection
-from app.hyperstate.display import PropertyItem
+from hyperstate.response import HyperStateResponse, ViewContext, ActorContext
+from hyperstate.flash import Flash
+from hyperstate.nav import NavLink
+from hyperstate.sections import PropertiesSection
+from hyperstate.display import PropertyItem
 
 
 class StudentDetailProjection:

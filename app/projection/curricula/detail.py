@@ -1,9 +1,9 @@
 from app.domain.curricula.aggregate import Curriculum
-from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
-from app.hyperstate.flash import Flash
-from app.hyperstate.sections import PropertiesSection, ActionSection, ListSection, GroupSection, ColumnDef, ListItem, PropertyItem
-from app.hyperstate.fields import TextField, TextareaField, SelectField, DateField, NumberField, FieldOption
-from app.hyperstate.nav import NavLink
+from hyperstate.response import HyperStateResponse, ViewContext, ActorContext
+from hyperstate.flash import Flash
+from hyperstate.sections import PropertiesSection, ActionSection, ListSection, GroupSection, ColumnDef, ListItem, PropertyItem
+from hyperstate.fields import TextField, TextareaField, SelectField, DateField, NumberField, FieldOption
+from hyperstate.nav import NavLink
 
 class CurriculumDetailProjection:
     def __init__(self, curriculum: Curriculum, actor: ActorContext):

@@ -5,7 +5,7 @@ import pytest
 from app.domain.lessons.aggregate import Lesson
 from app.domain.lessons.states import LessonState
 from app.domain.subjects.aggregate import Subject
-from app.hyperstate.response import ActorContext
+from hyperstate.response import ActorContext
 from app.projection.dashboard.view import DashboardProjection
 
 
@@ -156,7 +156,7 @@ class TestDashboardInlineActions:
         assert item.actions == []
 
     def test_flash_is_passed_through(self, actor, subject):
-        from app.hyperstate.flash import Flash
+        from hyperstate.flash import Flash
         proj = DashboardProjection(
             today_lessons=[],
             recently_completed=[],

@@ -4,8 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.subjects.aggregate import Subject
 from app.infrastructure.repositories.subject_repo import SubjectRepository
-from app.hyperstate.response import HyperStateResponse, ActorContext
-from app.hyperstate.flash import Flash
+from hyperstate.response import HyperStateResponse, ActorContext
+from hyperstate.flash import Flash
 from app.projection.subjects.detail import SubjectDetailProjection
 
 

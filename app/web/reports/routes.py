@@ -11,12 +11,12 @@ from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.hyperstate.display import PropertyItem
-from app.hyperstate.fields import BooleanField, DateField, FieldOption, SelectField
-from app.hyperstate.flash import Flash
-from app.hyperstate.nav import NavLink
-from app.hyperstate.response import ActorContext, HyperStateResponse, ViewContext
-from app.hyperstate.sections import (
+from hyperstate.display import PropertyItem
+from hyperstate.fields import BooleanField, DateField, FieldOption, SelectField
+from hyperstate.flash import Flash
+from hyperstate.nav import NavLink
+from hyperstate.response import ActorContext, HyperStateResponse, ViewContext
+from hyperstate.sections import (
     ActionSection,
     ColumnDef,
     ContentSection,
