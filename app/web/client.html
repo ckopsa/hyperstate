@@ -1052,6 +1052,60 @@ async function resolveDependency(depField, formState, action) {
   }
 }
 
+// ─── Item Action Modal ───
+function showItemActionModal(action) {
+  // Remove existing modal
+  const existing = document.getElementById('item-action-modal');
+  if (existing) existing.remove();
+
+  const formState = {};
+  for (const field of action.fields) {
+    formState[field.name] = field.value ?? '';
+  }
+
+  const overlay = h('div', {
+    id: 'item-action-modal',
+    style: {
+      position: 'fixed', inset: '0', background: 'rgba(0,0,0,0.4)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: '1000',
+    },
+    onClick: (e) => { if (e.target === overlay) overlay.remove(); },
+  });
+
+  const modal = h('div', { style: {
+    background: 'var(--bg)', borderRadius: '12px', padding: '24px',
+    minWidth: '400px', maxWidth: '600px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+  }});
+
+  modal.appendChild(h('div', { style: { fontWeight: '600', fontSize: '16px', marginBottom: '16px' } }, action.label));
+
+  const grid = h('div', { class: 'field-grid' });
+  for (const field of action.fields) {
+    const fieldEl = renderField(field, formState, action);
+    if (fieldEl) grid.appendChild(fieldEl);
+  }
+  modal.appendChild(grid);
+
+  const buttons = h('div', { style: { display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '16px' } },
+    h('button', { class: 'btn btn-subtle', onClick: () => overlay.remove() }, 'Cancel'),
+    h('button', {
+      class: `btn btn-${action.style === 'danger' ? 'danger' : 'primary'}`,
+      onClick: () => {
+        const body = {};
+        for (const [key, val] of Object.entries(formState)) {
+          setNested(body, key, val);
+        }
+        overlay.remove();
+        submitAction(action.method || 'POST', action.href, body);
+      },
+    }, action.label),
+  );
+  modal.appendChild(buttons);
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
 // ─── List ───
 function renderList(section) {
   if (!section.items || section.items.length === 0) {
@@ -1061,10 +1115,13 @@ function renderList(section) {
     );
   }
 
+  const hasItemActions = section.items.some(item => item.actions && item.actions.length > 0);
+
   const headerRow = h('tr', {},
     ...section.columns.map(col =>
       h('th', { class: col.align === 'right' ? 'right' : '' }, col.label)
-    )
+    ),
+    hasItemActions ? h('th', { class: 'right' }, '') : null,
   );
 
   const rows = section.items.map(item => {
@@ -1088,6 +1145,34 @@ function renderList(section) {
 
       return h('td', { class: col.align === 'right' ? 'right' : '' }, content);
     });
+
+    // Render item-level action buttons
+    if (hasItemActions) {
+      const actionBtns = (item.actions || []).map(action => {
+        if (action.fields && action.fields.length > 0) {
+          // Action with fields — render as expandable inline form
+          return h('button', {
+            class: `btn btn-sm btn-${action.style === 'danger' ? 'danger' : 'subtle'}`,
+            onClick: (e) => {
+              e.stopPropagation();
+              showItemActionModal(action);
+            },
+          }, action.label);
+        } else {
+          // Simple action (no fields) — just POST directly
+          return h('button', {
+            class: `btn btn-sm btn-${action.style === 'danger' ? 'danger' : 'subtle'}`,
+            onClick: (e) => {
+              e.stopPropagation();
+              submitAction(action.method || 'POST', action.href, {}, action.confirm);
+            },
+          }, action.label);
+        }
+      });
+      cells.push(h('td', { class: 'right', style: { whiteSpace: 'nowrap' } },
+        h('div', { style: { display: 'flex', gap: '4px', justifyContent: 'flex-end' } }, ...actionBtns)
+      ));
+    }
 
     return h('tr', {
       class: item.href ? 'clickable' : '',

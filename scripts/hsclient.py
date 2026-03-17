@@ -45,10 +45,13 @@ class Step:
     assertions: list[dict[str, Any]] | None = None
     action: str | None = None       # action key to look up in current response
     item: int | None = None         # list item index for item-level actions
+    click: int | None = None        # click list item N to navigate to its href
 
     def to_dict(self) -> dict:
         d: dict[str, Any] = {}
-        if self.action:
+        if self.click is not None:
+            d["click"] = self.click
+        elif self.action:
             d["action"] = self.action
             if self.item is not None:
                 d["item"] = self.item
@@ -75,6 +78,7 @@ class Step:
             assertions=d.get("assertions"),
             action=d.get("action"),
             item=d.get("item"),
+            click=d.get("click"),
         )
 
 
@@ -1066,8 +1070,42 @@ def replay_story(path: Path, until: int | None = None, base_url_override: str | 
         url = step.url
         body = step.body
 
+        # Click step: navigate to a list item's href
+        if step.click is not None:
+            if data is None:
+                print(_red(f"FAIL: click requires a previous response."))
+                ok = False
+                last_step = i
+                break
+
+            click_idx = step.click
+            # Find the item in list sections (including inside groups)
+            def find_list_item(secs, idx):
+                for sec in secs:
+                    if sec.get("kind") == "list":
+                        items = sec.get("items", [])
+                        if 0 <= idx < len(items):
+                            return items[idx]
+                    elif sec.get("kind") == "group":
+                        result = find_list_item(sec.get("sections", []), idx)
+                        if result:
+                            return result
+                return None
+
+            clicked = find_list_item(data.get("sections", []), click_idx)
+            if not clicked or not clicked.get("href"):
+                print(_red(f"FAIL: list item {click_idx} has no href to navigate to."))
+                ok = False
+                last_step = i
+                break
+
+            method = "GET"
+            url = clicked["href"]
+            body = None
+            label = f"  [{i + 1}/{stop_at}] click item {click_idx} → GET {url}"
+
         # Action-based step: look up action in current response
-        if step.action:
+        elif step.action:
             if data is None:
                 print(_red(f"FAIL: action '{step.action}' requires a previous response."))
                 ok = False
