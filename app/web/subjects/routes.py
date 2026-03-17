@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hyperstate.response import HyperStateResponse, ActorContext
+from app.domain.subjects.errors import SubjectNotFound
 from app.infrastructure.database import get_db
 from app.infrastructure.repositories.subject_repo import SubjectRepository
 from app.infrastructure.repositories.lesson_repo import LessonRepository
@@ -65,7 +66,7 @@ async def get_subject(
     repo = SubjectRepository(db)
     subject = await repo.get(subject_id)
     if subject is None:
-        raise HTTPException(status_code=404, detail=f"Subject {subject_id} not found")
+        raise SubjectNotFound(subject_id)
     lesson_repo = LessonRepository(db)
     lessons = await lesson_repo.list_all(subject_id=subject_id)
     return SubjectDetailProjection(subject, lessons, actor).build()

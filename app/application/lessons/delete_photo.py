@@ -6,7 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.repositories.portfolio_photo_repo import PortfolioPhotoRepository
 
 
-class PhotoNotFound(Exception):
+from app.domain.errors import DomainError
+
+
+class PhotoNotFound(DomainError):
     def __init__(self, photo_id: str):
         self.photo_id = photo_id
         super().__init__(f"Photo {photo_id} not found")

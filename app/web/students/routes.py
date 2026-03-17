@@ -1,10 +1,11 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hyperstate.response import HyperStateResponse, ActorContext
+from app.domain.students.errors import StudentNotFound
 from app.infrastructure.database import get_db
 from app.infrastructure.repositories.student_repo import StudentRepository
 from app.projection.students.list import StudentListProjection
@@ -55,5 +56,5 @@ async def get_student(
     repo = StudentRepository(db)
     student = await repo.get(student_id)
     if student is None:
-        raise HTTPException(status_code=404, detail=f"Student {student_id} not found")
+        raise StudentNotFound(student_id)
     return StudentDetailProjection(student, actor).build()

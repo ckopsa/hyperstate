@@ -1,7 +1,7 @@
 import httpx
 from datetime import date
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +11,7 @@ from app.application.lessons.delete_photo import DeletePhoto, PhotoNotFound
 from app.application.lessons.remove_resource import RemoveResource
 from app.application.lessons.transition_lesson import TransitionLesson
 from app.application.lessons.upload_photo import UploadPhoto
-from app.domain.lessons.errors import LessonNotFound
+from app.domain.lessons.errors import LessonError, LessonNotFound
 from app.domain.lessons.states import LessonState
 from hyperstate.flash import Flash
 from hyperstate.response import ActorContext, HyperStateResponse
@@ -88,7 +88,7 @@ async def get_lesson(
     repo = LessonRepository(db)
     lesson = await repo.get(lesson_id)
     if lesson is None:
-        raise HTTPException(status_code=404, detail=f"Lesson {lesson_id} not found")
+        raise LessonNotFound(lesson_id)
     photo_repo = PortfolioPhotoRepository(db)
     photos = await photo_repo.list_by_lesson(lesson_id)
     return LessonDetailProjection(lesson, actor, photos).build()
@@ -113,7 +113,7 @@ async def complete_lesson(
     repo = LessonRepository(db)
     lesson = await repo.get(lesson_id)
     if lesson is None:
-        raise HTTPException(status_code=404, detail=f"Lesson {lesson_id} not found")
+        raise LessonNotFound(lesson_id)
 
     just_completed = lesson.state != LessonState.COMPLETED
     if just_completed:
@@ -216,13 +216,13 @@ async def upload_portfolio_photo(
     actor: ActorContext = Depends(get_current_actor),
 ):
     if photo is None and not photo_url:
-        raise HTTPException(status_code=400, detail="Must provide either photo or photo_url.")
+        raise LessonError("Must provide either a photo file or a photo URL.")
     if photo is not None and photo_url:
-        raise HTTPException(status_code=400, detail="Cannot provide both photo and photo_url.")
+        raise LessonError("Cannot provide both a photo file and a photo URL.")
 
     if photo is not None:
         if not photo.content_type or not photo.content_type.startswith("image/"):
-            raise HTTPException(status_code=400, detail="Only image files are accepted.")
+            raise LessonError("Only image files are accepted.")
         file_content = await photo.read()
         filename = photo.filename or "photo.jpg"
         mime_type = photo.content_type
@@ -230,7 +230,7 @@ async def upload_portfolio_photo(
         import urllib.parse
         parsed = urllib.parse.urlparse(photo_url)
         if parsed.scheme not in ("http", "https"):
-            raise HTTPException(status_code=400, detail="Invalid URL scheme.")
+            raise LessonError("Invalid URL scheme. Use http or https.")
 
         try:
             async with httpx.AsyncClient() as client:
@@ -238,11 +238,11 @@ async def upload_portfolio_photo(
                     res.raise_for_status()
                     mime_type = res.headers.get("content-type", "image/jpeg")
                     if not mime_type.startswith("image/"):
-                        raise HTTPException(status_code=400, detail="URL must point to an image.")
+                        raise LessonError("URL must point to an image.")
 
                     content_length = res.headers.get("content-length")
                     if content_length and int(content_length) > 10 * 1024 * 1024:
-                        raise HTTPException(status_code=400, detail="Image is too large (max 10MB).")
+                        raise LessonError("Image is too large (max 10MB).")
 
                     chunks = []
                     bytes_read = 0
@@ -250,7 +250,7 @@ async def upload_portfolio_photo(
                         chunks.append(chunk)
                         bytes_read += len(chunk)
                         if bytes_read > 10 * 1024 * 1024:
-                            raise HTTPException(status_code=400, detail="Image is too large (max 10MB).")
+                            raise LessonError("Image is too large (max 10MB).")
 
                     file_content = b"".join(chunks)
 
@@ -258,11 +258,11 @@ async def upload_portfolio_photo(
                     if not filename or "." not in filename:
                         filename = "downloaded_photo.jpg"
         except httpx.RequestError as e:
-            raise HTTPException(status_code=400, detail=f"Failed to download image from URL: {e}")
+            raise LessonError(f"Failed to download image from URL: {e}")
+        except LessonError:
+            raise
         except Exception as e:
-            if isinstance(e, HTTPException):
-                raise e
-            raise HTTPException(status_code=400, detail=f"Failed to download image from URL: {e}")
+            raise LessonError(f"Failed to download image from URL: {e}")
 
     use_case = UploadPhoto(db)
     _, returned_lesson_id = await use_case.execute(
@@ -296,7 +296,7 @@ async def get_portfolio_photo(
     photo_repo = PortfolioPhotoRepository(db)
     photo = await photo_repo.get(photo_id)
     if photo is None or photo.lesson_id != lesson_id:
-        raise HTTPException(status_code=404, detail=f"Photo {photo_id} not found")
+        raise PhotoNotFound(photo_id)
     return PortfolioPhotoDetailProjection(photo, actor).build()
 
 
@@ -308,10 +308,7 @@ async def delete_portfolio_photo(
     actor: ActorContext = Depends(get_current_actor),
 ):
     use_case = DeletePhoto(db)
-    try:
-        returned_lesson_id = await use_case.execute(photo_id)
-    except PhotoNotFound:
-        raise HTTPException(status_code=404, detail=f"Photo {photo_id} not found")
+    returned_lesson_id = await use_case.execute(photo_id)
 
     lesson_repo = LessonRepository(db)
     lesson = await lesson_repo.get(returned_lesson_id)

@@ -21,10 +21,14 @@ from app.web.dashboard.routes import router as dashboard_router
 from app.web.calendar.routes import router as calendar_router
 from app.web.reports.routes import router as reports_router
 from app.web.curricula.routes import router as curricula_router
+from fastapi.exceptions import RequestValidationError
+from app.domain.errors import DomainError
 from app.domain.students.errors import StudentNotFound
 from app.domain.subjects.errors import SubjectNotFound, SubjectError
-from app.domain.lessons.errors import LessonNotFound
+from app.domain.lessons.errors import LessonError, LessonNotFound
+from app.domain.lessons.states import InvalidTransition
 from app.domain.curricula.errors import CurriculumNotFound, CurriculumItemNotFound
+from app.application.lessons.delete_photo import PhotoNotFound
 
 from app.infrastructure.database import engine, Base, async_session
 from app.infrastructure.models.student_model import StudentRow
@@ -227,3 +231,68 @@ async def not_authorized_handler(request, exc: NotAuthorized):
         nav=[NavLink(label="Dashboard", href="/dashboard")],
     )
     return JSONResponse(status_code=403, content=response.model_dump(by_alias=True, exclude_none=True))
+
+
+@app.exception_handler(LessonError)
+async def lesson_error_handler(request, exc: LessonError):
+    response = HyperStateResponse(
+        view="error",
+        title="Cannot Complete Action",
+        self_=str(request.url.path),
+        sections=[ContentSection(body=str(exc), format="plain")],
+        nav=[NavLink(label="All Lessons", href="/lessons", rel="collection")],
+    )
+    return JSONResponse(status_code=422, content=response.model_dump(by_alias=True, exclude_none=True))
+
+
+@app.exception_handler(InvalidTransition)
+async def invalid_transition_handler(request, exc: InvalidTransition):
+    response = HyperStateResponse(
+        view="error",
+        title="Invalid Action",
+        self_=str(request.url.path),
+        sections=[ContentSection(body=str(exc), format="plain")],
+        nav=[NavLink(label="Dashboard", href="/dashboard")],
+    )
+    return JSONResponse(status_code=422, content=response.model_dump(by_alias=True, exclude_none=True))
+
+
+@app.exception_handler(PhotoNotFound)
+async def photo_not_found_handler(request, exc: PhotoNotFound):
+    response = HyperStateResponse(
+        view="error",
+        title="Not Found",
+        self_=str(request.url.path),
+        sections=[ContentSection(body=str(exc), format="plain")],
+        nav=[NavLink(label="All Lessons", href="/lessons", rel="collection")],
+    )
+    return JSONResponse(status_code=404, content=response.model_dump(by_alias=True, exclude_none=True))
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request, exc: RequestValidationError):
+    messages = []
+    for err in exc.errors():
+        field = " → ".join(str(loc) for loc in err["loc"] if loc != "body")
+        messages.append(f"{field}: {err['msg']}")
+    body = "\n".join(messages) if messages else "Invalid request data."
+    response = HyperStateResponse(
+        view="error",
+        title="Validation Error",
+        self_=str(request.url.path),
+        sections=[ContentSection(body=body, format="plain")],
+    )
+    return JSONResponse(status_code=422, content=response.model_dump(by_alias=True, exclude_none=True))
+
+
+@app.exception_handler(DomainError)
+async def domain_error_handler(request, exc: DomainError):
+    """Catch-all for any domain error not handled by a specific handler above."""
+    response = HyperStateResponse(
+        view="error",
+        title="Error",
+        self_=str(request.url.path),
+        sections=[ContentSection(body=str(exc), format="plain")],
+        nav=[NavLink(label="Dashboard", href="/dashboard")],
+    )
+    return JSONResponse(status_code=422, content=response.model_dump(by_alias=True, exclude_none=True))

@@ -1,5 +1,7 @@
 from enum import StrEnum
 
+from app.domain.errors import DomainError
+
 
 class LessonState(StrEnum):
     PENDING = "pending"
@@ -32,7 +34,7 @@ def next_state(current: LessonState, action: str) -> LessonState:
     return transitions[action]
 
 
-class InvalidTransition(Exception):
+class InvalidTransition(DomainError):
     def __init__(self, state: LessonState, action: str):
         self.state = state
         self.action = action
