@@ -32,7 +32,7 @@ class InstantiateCurriculum:
         if not curriculum:
             raise CurriculumNotFound(curriculum_id)
 
-        student = await self.student_repo.get_by_id(student_id)
+        student = await self.student_repo.get(student_id)
         if not student:
             raise StudentNotFound(student_id)
 
@@ -76,19 +76,17 @@ class InstantiateCurriculum:
         # Redirect to the student's lesson list filtered
         from app.infrastructure.repositories.lesson_repo import LessonRepository
         lesson_repo = LessonRepository(self.session)
-        all_lessons = await lesson_repo.list_by_student(student_id)
+        all_lessons = await lesson_repo.list_all(student_id=student_id)
 
         # Filter to only the lessons we just created
         filtered_lessons = [l for l in all_lessons if l.id in created_lesson_ids]
 
-        return LessonListProjection(
-            lessons=filtered_lessons,
-            student=student,
-            actor=actor,
-        ).build(
-            flash=Flash(
-                type="success",
-                title="Curriculum Instantiated",
-                body=f"Created {lessons_created} lessons for {student.name} starting {start_date.isoformat()}."
-            )
+        flash = Flash(
+            type="success",
+            title="Curriculum Instantiated",
+            body=f"Created {lessons_created} lessons for {student.name} starting {start_date.isoformat()}."
         )
+        projection = LessonListProjection(lessons=filtered_lessons, actor=actor)
+        response = projection.build()
+        response.flash = flash
+        return response

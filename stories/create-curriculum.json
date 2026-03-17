@@ -66,11 +66,48 @@
       ]
     },
     {
+      "method": "POST",
+      "url": "{self}/instantiate",
+      "body": {
+        "student_id": "STU-DEMO",
+        "start_date": "2026-04-07"
+      },
+      "status_code": 200,
+      "response_title": "Lessons",
+      "assertions": [
+        {
+          "type": "value_equals",
+          "path": "flash.type",
+          "value": "success"
+        },
+        {
+          "type": "value_equals",
+          "path": "sections.1.items.0.data.title",
+          "value": "Place Value and Number Sense"
+        },
+        {
+          "type": "value_equals",
+          "path": "sections.1.items.0.data.scheduled_date",
+          "value": "2026-04-08"
+        },
+        {
+          "type": "value_equals",
+          "path": "sections.1.items.1.data.title",
+          "value": "Phonics and Decoding Strategies"
+        },
+        {
+          "type": "value_equals",
+          "path": "sections.1.items.1.data.scheduled_date",
+          "value": "2026-04-09"
+        }
+      ]
+    },
+    {
       "method": "GET",
-      "url": "nav:collection",
+      "url": "nav:parent",
       "body": null,
       "status_code": 200,
-      "response_title": "Curricula"
+      "response_title": "Daily Dashboard"
     }
   ],
   "created_at": "2026-03-16T18:00:00"
