@@ -12,7 +12,9 @@ class CurriculumRepository:
         self.session = session
 
     async def save(self, curriculum: Curriculum) -> None:
-        row = await self.session.get(CurriculumRow, curriculum.id)
+        stmt = select(CurriculumRow).options(selectinload(CurriculumRow.items).selectinload(CurriculumItemRow.resources)).where(CurriculumRow.id == curriculum.id)
+        result = await self.session.execute(stmt)
+        row = result.scalar_one_or_none()
         if not row:
             row = CurriculumRow(
                 id=curriculum.id,

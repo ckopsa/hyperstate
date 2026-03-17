@@ -984,9 +984,8 @@ def replay_story(path: Path, until: int | None = None, base_url_override: str | 
     for i, step in enumerate(story.steps[:stop_at]):
         label = f"  [{i + 1}/{stop_at}] {step.method} {step.url}"
         url = step.url
-        if "{self}" in url and hs.current and "self" in hs.current:
-            url = url.replace("{self}", hs.current["self"])
-        url = step.url
+        if "{self}" in url and data is not None and "self" in data:
+            url = url.replace("{self}", data["self"])
         if url.startswith("nav:") and data is not None:
             rel = url[4:]
             nav = data.get("nav", [])

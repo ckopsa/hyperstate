@@ -21,6 +21,30 @@
       "response_title": "3rd Grade Math Foundations"
     },
     {
+      "method": "POST",
+      "url": "{self}/items",
+      "body": {
+        "subject_id": "SUB-MATH",
+        "title": "Place Value and Number Sense",
+        "description": "Understanding hundreds, tens, and ones",
+        "day_offset": 1
+      },
+      "status_code": 200,
+      "response_title": "3rd Grade Math Foundations"
+    },
+    {
+      "method": "POST",
+      "url": "{self}/items",
+      "body": {
+        "subject_id": "SUB-READ",
+        "title": "Phonics and Decoding Strategies",
+        "description": "Blending consonant clusters and digraphs",
+        "day_offset": 2
+      },
+      "status_code": 200,
+      "response_title": "3rd Grade Math Foundations"
+    },
+    {
       "method": "GET",
       "url": "nav:collection",
       "body": null,
