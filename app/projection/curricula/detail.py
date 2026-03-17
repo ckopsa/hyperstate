@@ -63,6 +63,7 @@ class CurriculumDetailProjection:
                     ],
                     items=[
                         ListItem(
+                            href=f"/curricula/{self.curriculum.id}/items/{item.id}",
                             data={
                                 "sequence": item.sequence,
                                 "id": item.id,

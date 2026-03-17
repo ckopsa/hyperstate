@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.curricula.errors import CurriculumNotFound
+from app.domain.curricula.errors import CurriculumNotFound, CurriculumItemNotFound
 from app.infrastructure.database import get_db
 from app.infrastructure.repositories.curriculum_repo import CurriculumRepository
 from app.application.curricula.create_curriculum import CreateCurriculum
@@ -14,8 +14,10 @@ from app.application.curricula.remove_curriculum_item import RemoveCurriculumIte
 from app.application.curricula.reorder_curriculum_items import ReorderCurriculumItems
 from app.application.curricula.instantiate_curriculum import InstantiateCurriculum
 from app.application.curricula.add_curriculum_item_resource import AddCurriculumItemResource
+from app.application.curricula.remove_curriculum_item_resource import RemoveCurriculumItemResource
 from app.projection.curricula.list import CurriculumListProjection
 from app.projection.curricula.detail import CurriculumDetailProjection
+from app.projection.curricula.item_detail import CurriculumItemDetailProjection
 from app.hyperstate.response import HyperStateResponse, ActorContext
 from app.web.deps import get_current_actor
 
@@ -71,6 +73,40 @@ async def create_curriculum(
         name=req.name,
         description=req.description,
         grade_level=req.grade_level,
+        actor=actor,
+    )
+
+@router.get("/curricula/{curriculum_id}/items/{item_id}", response_model=HyperStateResponse)
+async def get_curriculum_item(
+    curriculum_id: str,
+    item_id: str,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    repo = CurriculumRepository(db)
+    curriculum = await repo.get_by_id(curriculum_id)
+    if not curriculum:
+        raise CurriculumNotFound(curriculum_id)
+
+    for item in curriculum.items:
+        if item.id == item_id:
+            return CurriculumItemDetailProjection(curriculum, item, actor).build()
+
+    raise CurriculumItemNotFound(item_id)
+
+@router.post("/curricula/{curriculum_id}/items/{item_id}/resources/{resource_id}/remove", response_model=HyperStateResponse)
+async def remove_curriculum_item_resource(
+    curriculum_id: str,
+    item_id: str,
+    resource_id: str,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+):
+    use_case = RemoveCurriculumItemResource(db)
+    return await use_case.execute(
+        curriculum_id=curriculum_id,
+        item_id=item_id,
+        resource_id=resource_id,
         actor=actor,
     )
 
