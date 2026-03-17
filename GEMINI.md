@@ -19,6 +19,7 @@ uv run python scripts/hsclient.py --crawl  # QA crawl
 | `docs/PROTOCOL.md` | HyperState protocol specification — section types, field types, contracts |
 | `docs/SCAFFOLD.md` | Step-by-step guide with templates for adding new domains |
 | `docs/AUTH.md` | Authentication patterns — JWT cookies, role gating, 401/403 handling |
+| `docs/ERRORS.md` | Error handling patterns — exception hierarchy, 5 error categories, handler templates |
 
 ## Architecture: DDD + Server-Driven Hypermedia
 
