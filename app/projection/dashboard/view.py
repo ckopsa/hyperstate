@@ -144,6 +144,7 @@ class DashboardProjection:
                 actor=self.actor,
             ),
             nav=[
+                NavLink(label="Lessons", href="/lessons", rel="collection"),
                 NavLink(label="Calendar", href="/calendar", rel="section"),
                 NavLink(label="Students", href="/students", rel="section"),
                 NavLink(label="Subjects", href="/subjects", rel="section"),

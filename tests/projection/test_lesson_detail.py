@@ -80,7 +80,7 @@ class TestStudentCompleteAction:
         view = LessonDetailProjection(in_progress_lesson, student_actor).build()
         sections = flatten_sections(view.sections)
         actions = [s for s in sections if s.kind == "action"]
-        complete = next((a for a in actions if a.key == "mark-complete"), None)
+        complete = next((a for a in actions if a.key == "complete"), None)
         assert complete is not None
         assert complete.label == "I finished this!"
         assert complete.condition is None
@@ -90,7 +90,7 @@ class TestStudentCompleteAction:
         view = LessonDetailProjection(pending_lesson, student_actor).build()
         sections = flatten_sections(view.sections)
         actions = [s for s in sections if s.kind == "action"]
-        complete = next((a for a in actions if a.key == "mark-complete"), None)
+        complete = next((a for a in actions if a.key == "complete"), None)
         assert complete is not None
         assert complete.label == "I finished this!"
         assert complete.condition is None
@@ -99,7 +99,7 @@ class TestStudentCompleteAction:
         view = LessonDetailProjection(in_progress_lesson, parent_actor).build()
         sections = flatten_sections(view.sections)
         actions = [s for s in sections if s.kind == "action"]
-        complete = next((a for a in actions if a.key == "mark-complete"), None)
+        complete = next((a for a in actions if a.key == "complete"), None)
         assert complete is not None
         assert complete.label == "Mark Complete"
 
@@ -107,7 +107,7 @@ class TestStudentCompleteAction:
         view = LessonDetailProjection(pending_lesson, parent_actor).build()
         sections = flatten_sections(view.sections)
         actions = [s for s in sections if s.kind == "action"]
-        complete = next((a for a in actions if a.key == "mark-complete"), None)
+        complete = next((a for a in actions if a.key == "complete"), None)
         assert complete is not None
         assert complete.condition is not None
         assert complete.condition.met is False
@@ -141,5 +141,5 @@ class TestCompletedLessonDetail:
         view = LessonDetailProjection(completed_lesson, student_actor).build()
         sections = flatten_sections(view.sections)
         actions = [s for s in sections if s.kind == "action"]
-        complete = next((a for a in actions if a.key == "mark-complete"), None)
+        complete = next((a for a in actions if a.key == "complete"), None)
         assert complete is None

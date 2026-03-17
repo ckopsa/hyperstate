@@ -2,6 +2,7 @@ import os
 from typing import List
 
 from app.domain.lessons.entities import PortfolioPhoto
+from app.hyperstate.flash import Flash
 from app.hyperstate.nav import NavLink
 from app.hyperstate.response import ActorContext, HyperStateResponse, ViewContext
 from app.hyperstate.sections import ColumnDef, EmptySection, ListItem, ListSection, Section
@@ -14,7 +15,7 @@ class PortfolioGalleryProjection:
         self.photos = photos
         self.actor = actor
 
-    def build(self) -> HyperStateResponse:
+    def build(self, flash: Flash | None = None) -> HyperStateResponse:
         sections: List[Section]
         if not self.photos:
             sections = [
@@ -55,6 +56,7 @@ class PortfolioGalleryProjection:
                 state="gallery",
                 actor=self.actor,
             ),
+            flash=flash,
             nav=[NavLink(label="Dashboard", href="/dashboard", rel="parent")],
             sections=sections,
         )

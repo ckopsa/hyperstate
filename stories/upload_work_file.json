@@ -4,20 +4,22 @@
   "created_at": "2024-03-24T12:00:00",
   "steps": [
     {
-      "method": "POST",
+      "method": "GET",
       "url": "/lessons",
+      "response_title": "Lessons"
+    },
+    {
+      "action": "create-lesson",
       "body": {
         "title": "Painting the Sunset",
         "subject_id": "art",
         "student_id": "alice",
         "time_slot": "afternoon"
       },
-      "status_code": 200,
       "response_title": "Painting the Sunset"
     },
     {
-      "method": "POST",
-      "url": "{self}/portfolio",
+      "action": "upload-work",
       "body": {
         "photo": {
           "__file__": "assets/sample_photo.jpg"
@@ -28,7 +30,6 @@
           "painting"
         ]
       },
-      "status_code": 200,
       "response_title": "Painting the Sunset"
     }
   ]

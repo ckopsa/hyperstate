@@ -6,28 +6,26 @@
       "method": "POST",
       "url": "/lessons/LES-001/reset",
       "body": {},
-      "status_code": 200,
       "response_title": "Addition and Subtraction"
     },
     {
-      "method": "GET",
-      "url": "/lessons/LES-001",
-      "body": null,
-      "status_code": 200,
-      "response_title": "Addition and Subtraction"
-    },
-    {
-      "method": "POST",
-      "url": "/lessons/LES-001/defer",
+      "action": "start",
       "body": {},
-      "status_code": 200,
+      "response_title": "Addition and Subtraction"
+    },
+    {
+      "action": "reset",
+      "body": {},
+      "response_title": "Addition and Subtraction"
+    },
+    {
+      "action": "defer",
+      "body": {},
       "response_title": "Daily Dashboard"
     },
     {
       "method": "GET",
-      "url": "/lessons",
-      "body": null,
-      "status_code": 200,
+      "url": "nav:collection",
       "response_title": "Lessons"
     }
   ],

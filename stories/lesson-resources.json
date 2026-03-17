@@ -6,28 +6,23 @@
       "method": "POST",
       "url": "/lessons/LES-001/reset",
       "body": {},
-      "status_code": 200,
       "response_title": "Addition and Subtraction"
     },
     {
       "method": "GET",
       "url": "/lessons/LES-001",
       "body": null,
-      "status_code": 200,
       "response_title": "Addition and Subtraction"
     },
     {
-      "method": "POST",
-      "url": "/lessons/LES-001/resources",
+      "action": "add-resource",
       "body": {"resource_type": "link", "title": "Khan Academy - Addition", "url": "https://khanacademy.org/addition"},
-      "status_code": 200,
       "response_title": "Addition and Subtraction"
     },
     {
       "method": "GET",
       "url": "/lessons/LES-001",
       "body": null,
-      "status_code": 200,
       "response_title": "Addition and Subtraction"
     }
   ],

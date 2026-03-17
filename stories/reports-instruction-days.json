@@ -10,17 +10,13 @@
       "response_title": "Reports"
     },
     {
-      "method": "GET",
-      "url": "/reports/instruction-days",
-      "body": null,
+      "click": 1,
       "status_code": 200,
       "response_title": "Instruction Days"
     },
     {
-      "method": "POST",
-      "url": "/reports/instruction-days",
+      "action": "add-manual-day",
       "body": {"date": "2026-03-15", "notes": "Validation test day"},
-      "status_code": 200,
       "response_title": "Instruction Days"
     }
   ],

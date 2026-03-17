@@ -48,6 +48,8 @@ class LessonDetailProjection:
             left_sections.append(action)
         if action := self._reset_section():
             left_sections.append(action)
+        if action := self._defer_section():
+            left_sections.append(action)
         left_sections.append(self._resources_section())
         left_sections.append(self._add_resource_section())
 
@@ -267,7 +269,7 @@ class LessonDetailProjection:
         l = self.lesson
         is_student = "student" in (self.actor.roles if self.actor else [])
         label = "I finished this!" if is_student else "Mark Complete"
-        key = "mark-complete"
+        key = "complete"
         match l.state:
             case LessonState.IN_PROGRESS:
                 return ActionSection(
@@ -310,6 +312,20 @@ class LessonDetailProjection:
                 )
             case _:
                 return None
+
+    def _defer_section(self) -> ActionSection | None:
+        l = self.lesson
+        match l.state:
+            case LessonState.PENDING:
+                if l.scheduled_date:
+                    return ActionSection(
+                        key="defer",
+                        label="Defer to Tomorrow",
+                        method="POST",
+                        href=f"/lessons/{l.id}/defer",
+                        style="subtle",
+                    )
+        return None
 
     def _state_variant(self) -> str:
         return {

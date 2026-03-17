@@ -6,28 +6,24 @@
       "method": "POST",
       "url": "/lessons/LES-001/reset",
       "body": {},
-      "status_code": 200,
       "response_title": "Addition and Subtraction"
     },
     {
       "method": "POST",
       "url": "/lessons/LES-002/reset",
       "body": {},
-      "status_code": 200,
       "response_title": "Chapter Book Reading"
     },
     {
       "method": "GET",
       "url": "/dashboard",
       "body": null,
-      "status_code": 200,
       "response_title": "Daily Dashboard"
     },
     {
       "method": "POST",
       "url": "/dashboard/defer-all",
       "body": {},
-      "status_code": 200,
       "response_title": "Daily Dashboard"
     }
   ],

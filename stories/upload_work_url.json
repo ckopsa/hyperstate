@@ -4,20 +4,22 @@
   "created_at": "2024-03-24T12:00:00",
   "steps": [
     {
-      "method": "POST",
+      "method": "GET",
       "url": "/lessons",
+      "response_title": "Lessons"
+    },
+    {
+      "action": "create-lesson",
       "body": {
         "title": "Painting the Sunrise",
         "subject_id": "art",
         "student_id": "alice",
         "time_slot": "morning"
       },
-      "status_code": 200,
       "response_title": "Painting the Sunrise"
     },
     {
-      "method": "POST",
-      "url": "{self}/portfolio",
+      "action": "upload-work",
       "body": {
         "photo_url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png",
         "caption": "Alice's sunrise painting via URL",
@@ -26,7 +28,6 @@
           "painting"
         ]
       },
-      "status_code": 200,
       "response_title": "Painting the Sunrise"
     }
   ]

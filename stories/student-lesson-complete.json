@@ -6,49 +6,38 @@
       "method": "GET",
       "url": "/students",
       "body": null,
-      "status_code": 200,
       "response_title": "Students"
     },
     {
-      "method": "GET",
-      "url": "/students/STU-DEMO",
-      "body": null,
-      "status_code": 200,
+      "click": 0,
       "response_title": "Demo Student"
     },
     {
       "method": "POST",
       "url": "/lessons/LES-001/reset",
       "body": {},
-      "status_code": 200,
       "response_title": "Addition and Subtraction"
     },
     {
       "method": "GET",
       "url": "/lessons/LES-001",
       "body": null,
-      "status_code": 200,
       "response_title": "Addition and Subtraction"
     },
     {
-      "method": "POST",
-      "url": "/lessons/LES-001/start",
+      "action": "start",
       "body": {},
-      "status_code": 200,
       "response_title": "Addition and Subtraction"
     },
     {
-      "method": "POST",
-      "url": "/lessons/LES-001/complete",
+      "action": "complete",
       "body": {},
-      "status_code": 200,
       "response_title": "Daily Dashboard"
     },
     {
       "method": "GET",
       "url": "/reports/instruction-days",
       "body": null,
-      "status_code": 200,
       "response_title": "Instruction Days"
     }
   ],
