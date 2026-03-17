@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import readline  # noqa: F401 — enables line editing in input()
 import sys
 import textwrap
@@ -966,6 +967,39 @@ def evaluate_assertion(assertion: dict, data: dict) -> tuple[bool, str]:
         
     return False, f"unknown assertion type '{type_}'"
 
+def _resolve_path(data: Any, path: str) -> Any:
+    """Resolve a dot-path like 'sections.1.items.0.data.id' from response data."""
+    current = data
+    for part in path.split("."):
+        if isinstance(current, list):
+            try:
+                current = current[int(part)]
+            except (ValueError, IndexError):
+                return None
+        elif isinstance(current, dict):
+            current = current.get(part)
+        else:
+            return None
+        if current is None:
+            return None
+    return current
+
+
+def _substitute_refs(value: Any, data: dict) -> Any:
+    """Replace {response:dot.path} placeholders in strings (recursively in dicts/lists)."""
+    if isinstance(value, str):
+        return re.sub(
+            r"\{response:([^}]+)\}",
+            lambda m: str(resolved) if (resolved := _resolve_path(data, m.group(1))) is not None else m.group(0),
+            value,
+        )
+    if isinstance(value, dict):
+        return {k: _substitute_refs(v, data) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_substitute_refs(v, data) for v in value]
+    return value
+
+
 def replay_story(path: Path, until: int | None = None, base_url_override: str | None = None) -> bool:
     """Replay a saved story. Returns True if all steps pass."""
     story = Story.load(path)
@@ -999,8 +1033,11 @@ def replay_story(path: Path, until: int | None = None, base_url_override: str | 
                 last_step = i
                 break
 
+        if data is not None:
+            url = _substitute_refs(url, data)
         label = f"  [{i + 1}/{stop_at}] {step.method} {url}"
-        data = hs.fetch(url, step.method, step.body)
+        body = _substitute_refs(step.body, data) if data and step.body else step.body
+        data = hs.fetch(url, step.method, body)
 
         if data is None:
             print(f"{_red('FAIL')} {label}")

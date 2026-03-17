@@ -45,6 +45,27 @@
       "response_title": "3rd Grade Math Foundations"
     },
     {
+      "method": "POST",
+      "url": "{self}/items/reorder",
+      "body": {
+        "item_ids": "{response:sections.1.items.1.data.id},{response:sections.1.items.0.data.id}"
+      },
+      "status_code": 200,
+      "response_title": "3rd Grade Math Foundations",
+      "assertions": [
+        {
+          "type": "value_equals",
+          "path": "sections.1.items.0.data.title",
+          "value": "Phonics and Decoding Strategies"
+        },
+        {
+          "type": "value_equals",
+          "path": "sections.1.items.1.data.title",
+          "value": "Place Value and Number Sense"
+        }
+      ]
+    },
+    {
       "method": "GET",
       "url": "nav:collection",
       "body": null,
