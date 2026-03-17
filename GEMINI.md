@@ -18,6 +18,7 @@ uv run python scripts/hsclient.py --crawl  # QA crawl
 |-----|---------|
 | `docs/PROTOCOL.md` | HyperState protocol specification — section types, field types, contracts |
 | `docs/SCAFFOLD.md` | Step-by-step guide with templates for adding new domains |
+| `docs/AUTH.md` | Authentication patterns — JWT cookies, role gating, 401/403 handling |
 
 ## Architecture: DDD + Server-Driven Hypermedia
 
@@ -96,6 +97,13 @@ app/
 from hyperstate.response import HyperStateResponse, ViewContext, ActorContext
 from hyperstate.flash import Flash
 from hyperstate.nav import NavLink
+
+# Auth
+from hyperstate.auth import (
+    has_role, require_role, role_condition,
+    NotAuthenticated, NotAuthorized,
+    login_action, logout_action,
+)
 
 # Sections
 from hyperstate.sections import (

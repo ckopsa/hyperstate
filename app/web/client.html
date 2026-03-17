@@ -543,6 +543,11 @@ async function navigate(href, pushState = true) {
   try {
     const res = await fetch(href, { headers: { 'Accept': 'application/vnd.hyperstate+json' } });
     const data = await res.json();
+    // On 401, render the login form the server sent (it's a valid HyperState response)
+    if (res.status === 401 && data.self) {
+      currentHref = data.self;
+      history.replaceState({ href: currentHref }, '', currentHref);
+    }
     renderView(data);
   } catch (err) {
     app.innerHTML = '';

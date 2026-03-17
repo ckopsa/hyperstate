@@ -9,6 +9,8 @@ from hyperstate.middleware import HyperStateMiddleware
 from hyperstate.response import HyperStateResponse
 from hyperstate.sections import ContentSection
 from hyperstate.nav import NavLink
+from hyperstate.auth import NotAuthenticated, NotAuthorized, login_action
+from app.web.auth.routes import router as auth_router
 from app.web.students.routes import router as students_router
 from app.web.students.options import router as students_options_router
 from app.web.subjects.routes import router as subjects_router
@@ -36,6 +38,7 @@ _UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "portfoli
 
 app = FastAPI(title="HyperState Homeschool Planner", version="0.1.0")
 app.add_middleware(HyperStateMiddleware)
+app.include_router(auth_router)
 app.include_router(students_router)
 app.include_router(students_options_router)
 app.include_router(subjects_router)
@@ -194,3 +197,33 @@ async def curriculum_item_not_found_handler(request, exc: CurriculumItemNotFound
         nav=[NavLink(label="All Curricula", href="/curricula", rel="collection")],
     )
     return JSONResponse(status_code=404, content=response.model_dump(by_alias=True, exclude_none=True))
+
+
+@app.exception_handler(NotAuthenticated)
+async def not_authenticated_handler(request, exc: NotAuthenticated):
+    response = HyperStateResponse(
+        view="form",
+        title="Sign In Required",
+        self_="/auth/login",
+        sections=[
+            ContentSection(body=exc.message, format="plain"),
+            login_action(),
+        ],
+        nav=[NavLink(label="Home", href="/dashboard")],
+    )
+    return JSONResponse(status_code=401, content=response.model_dump(by_alias=True, exclude_none=True))
+
+
+@app.exception_handler(NotAuthorized)
+async def not_authorized_handler(request, exc: NotAuthorized):
+    detail = exc.message
+    if exc.required_roles:
+        detail += f" Required: {', '.join(exc.required_roles)}."
+    response = HyperStateResponse(
+        view="error",
+        title="Permission Denied",
+        self_=str(request.url.path),
+        sections=[ContentSection(body=detail, format="plain")],
+        nav=[NavLink(label="Dashboard", href="/dashboard")],
+    )
+    return JSONResponse(status_code=403, content=response.model_dump(by_alias=True, exclude_none=True))
