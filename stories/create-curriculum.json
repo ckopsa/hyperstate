@@ -1,0 +1,32 @@
+{
+  "name": "create-curriculum",
+  "base_url": "http://localhost:8000",
+  "steps": [
+    {
+      "method": "GET",
+      "url": "/curricula",
+      "body": null,
+      "status_code": 200,
+      "response_title": "Curricula"
+    },
+    {
+      "method": "POST",
+      "url": "/curricula",
+      "body": {
+        "name": "3rd Grade Math Foundations",
+        "description": "Core arithmetic and geometry for 3rd grade",
+        "grade_level": "3rd"
+      },
+      "status_code": 200,
+      "response_title": "3rd Grade Math Foundations"
+    },
+    {
+      "method": "GET",
+      "url": "nav:collection",
+      "body": null,
+      "status_code": 200,
+      "response_title": "Curricula"
+    }
+  ],
+  "created_at": "2026-03-16T18:00:00"
+}

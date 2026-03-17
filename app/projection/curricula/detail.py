@@ -2,7 +2,7 @@ from app.domain.curricula.aggregate import Curriculum
 from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
 from app.hyperstate.flash import Flash
 from app.hyperstate.sections import PropertiesSection, ActionSection, ListSection, GroupSection, ColumnDef, ListItem, PropertyItem
-from app.hyperstate.fields import TextField, SelectField, DateField, NumberField, FieldOption
+from app.hyperstate.fields import TextField, TextareaField, SelectField, DateField, NumberField, FieldOption
 from app.hyperstate.nav import NavLink
 
 class CurriculumDetailProjection:
@@ -32,15 +32,15 @@ class CurriculumDetailProjection:
                         PropertiesSection(
                             title="Curriculum Details",
                             data=[
-                                PropertyItem(label="ID", value=self.curriculum.id),
-                                PropertyItem(label="Name", value=self.curriculum.name),
-                                PropertyItem(label="Description", value=self.curriculum.description or "-"),
-                                PropertyItem(label="Grade Level", value=self.curriculum.grade_level or "-"),
+                                PropertyItem(key="id", label="ID", value=self.curriculum.id),
+                                PropertyItem(key="name", label="Name", value=self.curriculum.name),
+                                PropertyItem(key="description", label="Description", value=self.curriculum.description or "-"),
+                                PropertyItem(key="grade_level", label="Grade Level", value=self.curriculum.grade_level or "-"),
                             ],
                         ),
                         ActionSection(
                             key="instantiate-curriculum",
-                            title="Instantiate for Student",
+                            label="Instantiate for Student",
                             method="POST",
                             href=f"/curricula/{self.curriculum.id}/instantiate",
                             fields=[
@@ -106,19 +106,19 @@ class CurriculumDetailProjection:
                 ),
                 ActionSection(
                     key="add-item",
-                    title="Add Curriculum Item",
+                    label="Add Curriculum Item",
                     method="POST",
                     href=f"/curricula/{self.curriculum.id}/items",
                     fields=[
                         SelectField(name="subject_id", label="Subject", required=True, options_href="/api/subjects"),
                         TextField(name="title", label="Title", required=True),
-                        TextField(name="description", label="Description", type="textarea"),
+                        TextareaField(name="description", label="Description"),
                         NumberField(name="day_offset", label="Day Offset", required=False),
                     ],
                 ),
                                 ActionSection(
                                     key="reorder-items",
-                                    title="Reorder Items",
+                                    label="Reorder Items",
                                     method="POST",
                                     href=f"/curricula/{self.curriculum.id}/items/reorder",
                                     fields=[

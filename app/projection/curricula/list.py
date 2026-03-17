@@ -3,7 +3,7 @@ from typing import Iterable
 from app.domain.curricula.aggregate import Curriculum
 from app.hyperstate.response import HyperStateResponse, ViewContext, ActorContext
 from app.hyperstate.sections import ListSection, ActionSection, ColumnDef, ListItem
-from app.hyperstate.fields import TextField, SelectField, FieldOption
+from app.hyperstate.fields import TextField, TextareaField, SelectField, FieldOption
 from app.hyperstate.nav import NavLink
 
 GRADE_OPTIONS = [
@@ -47,7 +47,7 @@ class CurriculumListProjection:
                     href="/curricula",
                     fields=[
                         TextField(name="name", label="Name", required=True),
-                        TextField(name="description", label="Description", type="textarea"),
+                        TextareaField(name="description", label="Description"),
                         SelectField(name="grade_level", label="Grade Level", required=False, options=GRADE_OPTIONS),
                     ],
                 ),
