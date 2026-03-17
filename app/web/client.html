@@ -1185,14 +1185,17 @@ function renderTimeline(section) {
 // ─── Group ───
 function renderGroup(section) {
   const inner = h('div', {
-    class: section.layout === 'columns' ? 'prop-grid' : '',
-    style: section.layout === 'sidebar' ? { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' } : {},
+    style: section.layout === 'columns'
+      ? { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }
+      : section.layout === 'sidebar'
+        ? { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }
+        : {},
   });
   for (const sub of section.sections || []) {
     const rendered = renderSection(sub);
     if (rendered) inner.appendChild(rendered);
   }
-  return h('div', { class: 'card' },
+  return h('div', {},
     section.title ? h('div', { class: 'card-title' }, section.title) : null,
     inner,
   );
