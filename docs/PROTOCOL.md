@@ -417,10 +417,17 @@ All fields inherit these:
 | `email` | `validation` | Email input |
 | `url` | `validation` | URL input |
 | `phone` | `validation` | Phone number input |
-| `file` | `accept`, `max_size_mb` | File upload |
+| `file` | `accept`, `max_size_mb` | File upload — see [File Upload Mechanics](#file-upload-mechanics) |
 | `hidden` | — | Hidden form value |
 | `group` | `layout`, `fields` | Fieldset (nested fields) |
 | `repeatable` | `fields`, `items`, `min_items`, `max_items` | Dynamic list of field groups |
+
+**FileField extra fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `accept` | string[] | Allowed MIME types (e.g. `["image/*", "application/pdf"]`). Empty list means any type. |
+| `max_size_mb` | float? | Maximum file size in megabytes. Null means no client-side limit. |
 
 ### ValidationRules
 
@@ -483,6 +490,96 @@ the client fetches updated data from the server.
 
 ---
 
+## File Upload Mechanics
+
+### Encoding: multipart/form-data
+
+When an action's `fields` list contains one or more `file` fields, the client
+**MUST** submit the form as `multipart/form-data` instead of JSON. The server
+expects standard multipart encoding — it cannot accept a JSON body when files
+are included.
+
+- Each non-file field becomes a **text part** with its `name` as the part name.
+- Each file field becomes a **binary part** with its `name` as the part name,
+  the filename preserved, and the correct `Content-Type` for the file.
+- If the user provides no file for an optional file field, omit the part
+  entirely (do not send an empty binary part).
+
+**Example multipart submission:**
+
+```
+POST /lessons/LES-A1B2C3/portfolio
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="caption"
+
+My drawing
+------Boundary
+Content-Disposition: form-data; name="photo"; filename="drawing.jpg"
+Content-Type: image/jpeg
+
+<binary data>
+------Boundary--
+```
+
+For actions with **no file fields**, submit as JSON as usual:
+```
+Content-Type: application/json
+{"caption": "My drawing"}
+```
+
+### Client-Side Validation
+
+Before submitting, the client SHOULD validate locally to give immediate
+feedback without a round-trip:
+
+1. **Type check**: If `accept` is non-empty, reject files whose MIME type does
+   not match any entry in `accept`. An entry of `"image/*"` matches any
+   `image/` MIME type; `"application/pdf"` is an exact match.
+2. **Size check**: If `max_size_mb` is set, reject files larger than
+   `max_size_mb * 1024 * 1024` bytes.
+
+These are **client-side hints only**. The server always re-validates — do not
+trust the client to enforce these constraints.
+
+### Server-Side Validation
+
+The server validates MIME type and file size and returns a `400` response on
+failure. The error is surfaced as a field-level `error` on the file field (see
+field-level errors in the error handling docs) or as a top-level
+`HyperStateResponse` with view `error`.
+
+### Upload Progress
+
+File uploads use standard HTTP multipart — there is no separate progress API.
+Clients that want upload progress feedback should use the browser's built-in
+`XMLHttpRequest.upload.onprogress` or `fetch` with a `ReadableStream` body.
+The server provides no progress endpoint.
+
+### Value Semantics
+
+| Scenario | `value` contents |
+|----------|-----------------|
+| New form (no existing file) | `null` |
+| Edit form (file previously uploaded) | Server-relative URL string, e.g. `"/uploads/portfolio/abc.jpg"` |
+| After successful upload | Server returns a new response; `value` reflects the newly stored URL |
+
+When `value` is a URL, the client SHOULD display the current file (e.g. an
+image thumbnail or a filename link) and offer a replace control. Submitting the
+form without selecting a new file means the part is omitted — the server
+interprets this as "keep the existing file". To explicitly clear a file, a
+separate action (e.g. "Remove Photo") must be provided by the server.
+
+### Chunked Uploads and Pre-Signed URLs
+
+**Not supported.** HyperState uses direct multipart POST. Pre-signed URLs and
+chunked upload protocols would require the client to know about the storage
+backend, breaking the server-driven model. `max_size_mb` keeps uploads within
+practical limits for direct transfer.
+
+---
+
 ## Client Behavior Contract
 
 1. **Render sections in order.** The server decides layout, not the client.
@@ -497,7 +594,9 @@ the client fetches updated data from the server.
 6. **Respect field dependencies.** When a `depends_on` field changes, fetch
    updated data and replace the dependent field/options/form.
 7. **Submit forms to `action.href` using `action.method`.** Send field values
-   as JSON body (or multipart for file uploads).
+   as a JSON body when no `file` fields are present; use `multipart/form-data`
+   when the action contains one or more `file` fields. See
+   [File Upload Mechanics](#file-upload-mechanics).
 8. **Navigate `href` links with GET.** ListItem hrefs, NavLink hrefs, and
    PropertyItem hrefs are all navigated with GET.
 
