@@ -70,6 +70,13 @@ class LessonListProjection:
             nav=[NavLink(label="Dashboard", href="/dashboard", rel="parent")],
             sections=[
                 ActionSection(
+                    key="create-new-lesson",
+                    label="Create New Lesson",
+                    method="GET",
+                    href="/lessons/new",
+                    style="primary",
+                ),
+                ActionSection(
                     key="filter-lessons",
                     label="Filter & Sort",
                     method="GET",
@@ -79,13 +86,13 @@ class LessonListProjection:
                             name="student_id",
                             label="Student",
                             options_href="/api/students",
-                            value=getattr(self, "current_student_id", None),
+                            value=self.current_student_id,
                         ),
                         SelectField(
                             name="subject_id",
                             label="Subject",
                             options_href="/api/subjects",
-                            value=getattr(self, "current_subject_id", None),
+                            value=self.current_subject_id,
                         ),
                         SelectField(
                             name="state",
@@ -96,7 +103,7 @@ class LessonListProjection:
                                 FieldOption(value="in_progress", label="In Progress"),
                                 FieldOption(value="completed", label="Completed"),
                             ],
-                            value=getattr(self, "current_state", None),
+                            value=self.current_state,
                         ),
                         SelectField(
                             name="sort",
@@ -107,32 +114,8 @@ class LessonListProjection:
                                 FieldOption(value="title_asc", label="Title (A-Z)"),
                                 FieldOption(value="title_desc", label="Title (Z-A)"),
                             ],
-                            value=getattr(self, "current_sort", "date_asc"),
+                            value=self.current_sort,
                         ),
-                    ],
-                ),
-                ActionSection(
-                    key="create-lesson",
-                    label="Create Lesson",
-                    method="POST",
-                    href="/lessons",
-                    fields=[
-                        TextField(name="title", label="Title", required=True),
-                        SelectField(
-                            name="subject_id",
-                            label="Subject",
-                            required=True,
-                            options_href="/api/subjects",
-                        ),
-                        SelectField(
-                            name="student_id",
-                            label="Student",
-                            required=True,
-                            options_href="/api/students",
-                        ),
-                        TextareaField(name="description", label="Description"),
-                        DateField(name="scheduled_date", label="Scheduled Date"),
-                        SelectField(name="time_slot", label="Time Slot", options=TIME_SLOT_OPTIONS, value="morning"),
                     ],
                 ),
                 ListSection(

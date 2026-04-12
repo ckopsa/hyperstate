@@ -25,6 +25,7 @@ from app.infrastructure.repositories.subject_repo import SubjectRepository
 from app.projection.dashboard.view import DashboardProjection
 from app.projection.lessons.detail import LessonDetailProjection
 from app.projection.lessons.list import LessonListProjection
+from app.projection.lessons.form import LessonCreateProjection
 from app.projection.lessons.portfolio_photo_detail import PortfolioPhotoDetailProjection
 from app.application.lessons.defer_lesson import DeferLesson
 from app.web.deps import get_current_actor
@@ -77,6 +78,13 @@ async def list_lessons(
     ).build()
 
 
+@router.get("/new", response_model=HyperStateResponse)
+async def create_lesson_form(
+    actor: ActorContext = Depends(get_current_actor),
+):
+    return LessonCreateProjection(actor).build()
+
+
 @router.post("", response_model=HyperStateResponse)
 async def create_lesson(
     body: CreateLessonBody,
@@ -93,12 +101,8 @@ async def create_lesson(
         errors.add("student_id", "Please select a student.")
 
     if errors:
-        # Re-render the list page with the form errors applied
-        repo = LessonRepository(db)
-        lessons = await repo.list_all()
-        subjects = await SubjectRepository(db).list_all()
-        students = await StudentRepository(db).list_all()
-        projection = LessonListProjection(lessons, actor, subjects=subjects, students=students)
+        # Re-render the form with errors applied
+        projection = LessonCreateProjection(actor)
         response = projection.build()
 
         # Find the create form action and apply errors + submitted values
