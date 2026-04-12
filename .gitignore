@@ -13,6 +13,13 @@ wheels/
 *.db
 
 # Gas Town runtime directories
-.beads/
+.beads/embeddeddolt/
+.beads/interactions.jsonl
+.beads/backup/
+.beads/dolt/
 .claude/
 .runtime/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+.beads-credential-key
