@@ -9,14 +9,12 @@ wheels/
 # Virtual environments
 .venv
 
-# SQLite database (runtime artifact)
+# Runtime artifacts
 *.db
+uploads/
 
-# Gas Town runtime directories
-.beads/embeddeddolt/
-.beads/interactions.jsonl
-.beads/backup/
-.beads/dolt/
+# Beads / Gas Town runtime directories
+.beads/
 .claude/
 .runtime/
 
