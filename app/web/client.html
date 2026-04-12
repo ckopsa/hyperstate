@@ -567,28 +567,42 @@ async function submitAction(method, href, body = null, confirmMsg = null, asForm
       headers: { 'Accept': 'application/vnd.hyperstate+json' },
     };
     if (body) {
-      // Check if body contains File objects
-      let hasFiles = false;
-      for (const [key, val] of Object.entries(body)) {
-        if (val instanceof File) hasFiles = true;
-      }
-
-      if (hasFiles || asForm) {
-        const formData = new FormData();
+      if (method.toUpperCase() === 'GET') {
+        const urlObj = new URL(href, window.location.href);
         for (const [key, val] of Object.entries(body)) {
-          if (val != null) {
-            // For arrays (like tags), append multiple times
+          if (val != null && val !== '') {
             if (Array.isArray(val)) {
-              val.forEach(v => formData.append(key, v));
+              val.forEach(v => urlObj.searchParams.append(key, v));
             } else {
-              formData.append(key, val);
+              urlObj.searchParams.append(key, val);
             }
           }
         }
-        opts.body = formData;
+        href = urlObj.toString();
       } else {
-        opts.headers['Content-Type'] = 'application/json';
-        opts.body = JSON.stringify(body);
+        // Check if body contains File objects
+        let hasFiles = false;
+        for (const [key, val] of Object.entries(body)) {
+          if (val instanceof File) hasFiles = true;
+        }
+
+        if (hasFiles || asForm) {
+          const formData = new FormData();
+          for (const [key, val] of Object.entries(body)) {
+            if (val != null) {
+              // For arrays (like tags), append multiple times
+              if (Array.isArray(val)) {
+                val.forEach(v => formData.append(key, v));
+              } else {
+                formData.append(key, val);
+              }
+            }
+          }
+          opts.body = formData;
+        } else {
+          opts.headers['Content-Type'] = 'application/json';
+          opts.body = JSON.stringify(body);
+        }
       }
     }
     const res = await fetch(href, opts);
@@ -1123,9 +1137,24 @@ function renderList(section) {
   const hasItemActions = section.items.some(item => item.actions && item.actions.length > 0);
 
   const headerRow = h('tr', {},
-    ...section.columns.map(col =>
-      h('th', { class: col.align === 'right' ? 'right' : '' }, col.label)
-    ),
+    ...section.columns.map(col => {
+      const label = col.label;
+      const content = col.href 
+        ? h('button', { 
+            class: 'sort-link', 
+            onClick: () => navigate(col.href),
+            style: { 
+              background: 'none', border: 'none', padding: '0', 
+              font: 'inherit', color: 'inherit', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '4px'
+            }
+          }, 
+          label,
+          h('span', { style: { fontSize: '10px', opacity: '0.5' } }, '↕')
+        )
+        : label;
+      return h('th', { class: col.align === 'right' ? 'right' : '' }, content);
+    }),
     hasItemActions ? h('th', { class: 'right' }, '') : null,
   );
 

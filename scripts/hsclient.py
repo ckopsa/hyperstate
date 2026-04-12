@@ -207,12 +207,24 @@ def print_list_section(section: dict, actions_list: list[dict]) -> list[dict]:
         return clickable
 
     # Print header
-    col_labels = [c.get("label", c.get("key", "")) for c in columns]
-    header = "    " + "  │  ".join(f"{lbl:<16}" for lbl in col_labels)
+    clickable_headers = []
+    base_idx = len(actions_list)
+    
+    col_parts = []
+    for col in columns:
+        label = col.get("label", col.get("key", ""))
+        if col.get("href"):
+            idx = base_idx + len(clickable_headers)
+            clickable_headers.append({"label": f"Sort by {label}", "href": col["href"], "_type": "sort_header"})
+            col_parts.append(f"[{idx}] {label}")
+        else:
+            col_parts.append(label)
+            
+    header = "    " + "  │  ".join(f"{lbl:<16}" for lbl in col_parts)
     print(_dim(header))
     print(_dim("    " + "─" * len(header.strip())))
 
-    base = len(actions_list)
+    base = base_idx + len(clickable_headers)
     for idx, item in enumerate(items):
         data = item.get("data", {})
         cells = []
@@ -231,6 +243,8 @@ def print_list_section(section: dict, actions_list: list[dict]) -> list[dict]:
         # Inline row actions
         for act in item.get("actions", []):
             actions_list.append(act)
+
+    clickable = clickable_headers + clickable
 
     pag = section.get("pagination")
     if pag:
@@ -520,41 +534,68 @@ class HSClient:
         data = None
         is_form = False
 
-        if body and method.upper() != "GET":
-            files = []
-            data = []
-            # Check if any field is a file
-            for k, v in body.items():
-                if isinstance(v, dict) and "__file__" in v:
-                    is_form = True
-
-            # For specific endpoints like portfolio that require Form data even without a file
-            if "portfolio" in url:
-                is_form = True
-
-            if is_form:
+        if body:
+            if method.upper() == "GET":
+                import urllib.parse
+                parsed = urllib.parse.urlparse(url)
+                query = urllib.parse.parse_qsl(parsed.query)
+                for k, v in body.items():
+                    if v is not None and v != "":
+                        if isinstance(v, list):
+                            for item in v:
+                                query.append((k, str(item)))
+                        else:
+                            query.append((k, str(v)))
+                new_query = urllib.parse.urlencode(query)
+                url = urllib.parse.urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
+                body = None  # Clear body so it doesn't get recorded/re-appended
+            else:
+                files = []
+                data = []
+                # Check if any field is a file
                 for k, v in body.items():
                     if isinstance(v, dict) and "__file__" in v:
-                        try:
-                            import mimetypes
-                            path = v["__file__"]
-                            mime_type, _ = mimetypes.guess_type(path)
-                            mime_type = mime_type or "application/octet-stream"
-                            filename = path.split("/")[-1]
-                            files.append((k, (filename, open(path, "rb"), mime_type)))
-                        except Exception as e:
-                            print(f"Error reading file {path}: {e}")
-                    elif isinstance(v, list):
-                        for item in v:
-                            data.append((k, str(item)))
-                    else:
-                        data.append((k, str(v) if v is not None else ""))
-                if not files:
+                        is_form = True
+
+                # For specific endpoints like portfolio that require Form data even without a file
+                if "portfolio" in url:
+                    is_form = True
+
+                if is_form:
+                    for k, v in body.items():
+                        if isinstance(v, dict) and "__file__" in v:
+                            try:
+                                import mimetypes
+                                path = v["__file__"]
+                                mime_type, _ = mimetypes.guess_type(path)
+                                mime_type = mime_type or "application/octet-stream"
+                                filename = path.split("/")[-1]
+                                files.append((k, (filename, open(path, "rb"), mime_type)))
+                            except Exception as e:
+                                print(f"Error reading file {path}: {e}")
+                        elif isinstance(v, list):
+                            for item in v:
+                                data.append((k, str(item)))
+                        else:
+                            data.append((k, str(v) if v is not None else ""))
+                    if not files:
+                        files = None
+                    # data is always set if is_form is True
+                else:
                     files = None
-                # data is always set if is_form is True
-            else:
-                files = None
-                data = None
+                    data = None
+
+        def list_to_dict(pairs: list[tuple[str, str]]) -> dict[str, Any]:
+            res = {}
+            for k, v in pairs:
+                if k in res:
+                    if isinstance(res[k], list):
+                        res[k].append(v)
+                    else:
+                        res[k] = [res[k], v]
+                else:
+                    res[k] = v
+            return res
 
         try:
             if method.upper() == "GET":
@@ -564,28 +605,12 @@ class HSClient:
                     # Remove Content-Type to let httpx determine it
                     req_headers = {k: v for k, v in HEADERS.items() if k.lower() != "content-type"}
                     if files:
-                        dict_data = {}
-                        for k, v in data:
-                            if k in dict_data:
-                                if isinstance(dict_data[k], list):
-                                    dict_data[k].append(v)
-                                else:
-                                    dict_data[k] = [dict_data[k], v]
-                            else:
-                                dict_data[k] = v
+                        dict_data = list_to_dict(data)
                         resp = self.client.request(
                             method.upper(), url, headers=req_headers, data=dict_data, files=files,
                         )
                     else:
-                        dict_data = {}
-                        for k, v in data:
-                            if k in dict_data:
-                                if isinstance(dict_data[k], list):
-                                    dict_data[k].append(v)
-                                else:
-                                    dict_data[k] = [dict_data[k], v]
-                            else:
-                                dict_data[k] = v
+                        dict_data = list_to_dict(data)
                         resp = self.client.request(
                             method.upper(), url, headers=req_headers, data=dict_data,
                         )

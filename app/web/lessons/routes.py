@@ -52,14 +52,29 @@ async def list_lessons(
     student_id: str | None = Query(None),
     subject_id: str | None = Query(None),
     state: str | None = Query(None),
+    sort: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     actor: ActorContext = Depends(get_current_actor),
 ):
     repo = LessonRepository(db)
-    lessons = await repo.list_all(student_id=student_id, subject_id=subject_id, state=state)
+    lessons = await repo.list_all(
+        student_id=student_id,
+        subject_id=subject_id,
+        state=state,
+        sort=sort,
+    )
     subjects = await SubjectRepository(db).list_all()
     students = await StudentRepository(db).list_all()
-    return LessonListProjection(lessons, actor, subjects=subjects, students=students).build()
+    return LessonListProjection(
+        lessons,
+        actor,
+        subjects=subjects,
+        students=students,
+        student_id=student_id,
+        subject_id=subject_id,
+        state=state,
+        sort=sort,
+    ).build()
 
 
 @router.post("", response_model=HyperStateResponse)

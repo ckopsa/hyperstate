@@ -63,10 +63,10 @@ class LessonRepository:
         student_id: str | None = None,
         subject_id: str | None = None,
         state: str | None = None,
+        sort: str | None = "date_asc",
     ) -> list[Lesson]:
         stmt = (
             select(LessonRow)
-            .order_by(LessonRow.scheduled_date, LessonRow.title)
             .options(selectinload(LessonRow.resources))
         )
         if student_id:
@@ -75,6 +75,17 @@ class LessonRepository:
             stmt = stmt.where(LessonRow.subject_id == subject_id)
         if state:
             stmt = stmt.where(LessonRow.state == state)
+
+        # Apply sorting
+        if sort == "date_desc":
+            stmt = stmt.order_by(LessonRow.scheduled_date.desc(), LessonRow.title)
+        elif sort == "title_asc":
+            stmt = stmt.order_by(LessonRow.title)
+        elif sort == "title_desc":
+            stmt = stmt.order_by(LessonRow.title.desc())
+        else:  # default: date_asc
+            stmt = stmt.order_by(LessonRow.scheduled_date.asc(), LessonRow.title)
+
         rows = (await self.session.execute(stmt)).scalars().all()
         return [self._to_domain(r) for r in rows]
 

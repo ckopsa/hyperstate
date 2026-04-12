@@ -58,6 +58,7 @@ class ColumnDef(BaseModel):
     display: str = "plain"
     currency: str | None = None
     align: Literal["left", "right", "center"] = "left"
+    href: str | None = None
 
 
 class ListItem(BaseModel):
