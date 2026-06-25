@@ -21,6 +21,7 @@ from app.web.dashboard.routes import router as dashboard_router
 from app.web.calendar.routes import router as calendar_router
 from app.web.reports.routes import router as reports_router
 from app.web.curricula.routes import router as curricula_router
+from app.web.recipes.routes import router as recipes_router
 from fastapi.exceptions import RequestValidationError
 from app.domain.errors import DomainError
 from app.domain.students.errors import StudentNotFound
@@ -28,6 +29,7 @@ from app.domain.subjects.errors import SubjectNotFound, SubjectError
 from app.domain.lessons.errors import LessonError, LessonNotFound
 from app.domain.lessons.states import InvalidTransition
 from app.domain.curricula.errors import CurriculumNotFound, CurriculumItemNotFound
+from app.domain.recipes.errors import RecipeError, RecipeNotFound
 from app.application.lessons.delete_photo import PhotoNotFound
 
 from app.infrastructure.database import engine, Base, async_session
@@ -37,6 +39,7 @@ from app.infrastructure.models.lesson_model import LessonRow, LessonResourceRow 
 from app.infrastructure.models.portfolio_photo_model import PortfolioPhotoRow  # noqa: F401
 from app.infrastructure.models.instruction_day_model import InstructionDayRow  # noqa: F401
 from app.infrastructure.models.curriculum_model import CurriculumRow, CurriculumItemRow, CurriculumItemResourceRow  # noqa: F401
+from app.infrastructure.models.recipe_model import RecipeRow, IngredientRow  # noqa: F401
 
 _UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "portfolio")
 
@@ -53,6 +56,7 @@ app.include_router(dashboard_router)
 app.include_router(calendar_router)
 app.include_router(reports_router)
 app.include_router(curricula_router)
+app.include_router(recipes_router)
 
 
 @app.on_event("startup")
@@ -121,6 +125,44 @@ async def startup():
                 ),
             ]
             session.add_all(demo_lessons)
+            await session.commit()
+
+    # Seed example recipes if none exist
+    async with async_session() as session:
+        from sqlalchemy import select
+        stmt = select(RecipeRow).limit(1)
+        result = await session.execute(stmt)
+        if not result.scalar_one_or_none():
+            spaghetti = RecipeRow(
+                id="REC-SPAG",
+                name="Spaghetti Bolognese",
+                theme="italian",
+                uses_frozen_meat=True,
+                thaw_lead_hours=12,
+                prep_minutes=45,
+                state="active",
+                ingredients=[
+                    IngredientRow(position=0, name="Spaghetti", quantity="1 lb"),
+                    IngredientRow(position=1, name="Ground beef", quantity="1 lb"),
+                    IngredientRow(position=2, name="Tomato sauce", quantity="24 oz"),
+                    IngredientRow(position=3, name="Onion", quantity="1"),
+                ],
+            )
+            tacos = RecipeRow(
+                id="REC-TACO",
+                name="Taco Night",
+                theme="mexican",
+                uses_frozen_meat=False,
+                prep_minutes=30,
+                state="active",
+                ingredients=[
+                    IngredientRow(position=0, name="Tortillas", quantity="8"),
+                    IngredientRow(position=1, name="Ground beef", quantity="1 lb"),
+                    IngredientRow(position=2, name="Shredded cheese", quantity="2 cups"),
+                    IngredientRow(position=3, name="Lettuce", quantity="1 head"),
+                ],
+            )
+            session.add_all([spaghetti, tacos])
             await session.commit()
 
 
@@ -201,6 +243,30 @@ async def curriculum_item_not_found_handler(request, exc: CurriculumItemNotFound
         nav=[NavLink(label="All Curricula", href="/curricula", rel="collection")],
     )
     return JSONResponse(status_code=404, content=response.model_dump(by_alias=True, exclude_none=True))
+
+
+@app.exception_handler(RecipeNotFound)
+async def recipe_not_found_handler(request, exc: RecipeNotFound):
+    response = HyperStateResponse(
+        view="error",
+        title="Not Found",
+        self_=str(request.url.path),
+        sections=[ContentSection(body=f"Recipe {exc.recipe_id} was not found.", format="plain")],
+        nav=[NavLink(label="All Recipes", href="/recipes", rel="collection")],
+    )
+    return JSONResponse(status_code=404, content=response.model_dump(by_alias=True, exclude_none=True))
+
+
+@app.exception_handler(RecipeError)
+async def recipe_error_handler(request, exc: RecipeError):
+    response = HyperStateResponse(
+        view="error",
+        title="Cannot Complete Action",
+        self_=str(request.url.path),
+        sections=[ContentSection(body=str(exc), format="plain")],
+        nav=[NavLink(label="All Recipes", href="/recipes", rel="collection")],
+    )
+    return JSONResponse(status_code=422, content=response.model_dump(by_alias=True, exclude_none=True))
 
 
 @app.exception_handler(NotAuthenticated)
