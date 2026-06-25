@@ -20,10 +20,14 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 import asyncio
 from sqlalchemy.ext.asyncio import async_engine_from_config
-from app.infrastructure.database import Base
+from app.infrastructure.database import Base, DATABASE_URL
 # ensure all models are imported so Alembic knows about them
 from app.main import app
 target_metadata = Base.metadata
+
+# Run migrations against the same Postgres URL the app uses (DATABASE_URL),
+# overriding the placeholder in alembic.ini.
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

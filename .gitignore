@@ -13,10 +13,16 @@ wheels/
 *.db
 uploads/
 
+# Local environment (see .env.example)
+.env
+
 # Beads / Gas Town runtime directories
 .beads/
 .claude/
 .runtime/
+.agents/
+.gc/
+.gemini/
 
 # Beads / Dolt files (added by bd init)
 .dolt/
