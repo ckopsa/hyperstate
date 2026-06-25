@@ -21,16 +21,24 @@ from sqlalchemy.pool import StaticPool
 from app.domain.recipes.aggregate import Recipe
 from app.domain.shared.themes import Theme
 from app.domain.weekplan.aggregate import WeekPlan
+from app.infrastructure.auth.oidc import get_oidc_client
 from app.infrastructure.database import Base, get_db
 from app.infrastructure.repositories.recipe_repo import RecipeRepository
 from app.infrastructure.repositories.weekplan_repo import WeekPlanRepository
 from app.main import app
-from app.web.auth.tokens import create_token
+from hyperstate.response import ActorContext
 
 TUESDAY = date(2026, 6, 23)
 WEDNESDAY = date(2026, 6, 24)
 PLAN_ID = "WP-2026-06-23"  # WeekPlan.create derives this from the Tuesday start.
 SCHEDULE_URL = f"/weekplans/{PLAN_ID}/schedule.ics"
+
+
+class _StubOIDCClient:
+    """Stand-in for the Keycloak client: any token resolves to a parent actor."""
+
+    async def actor_from_token(self, token: str) -> ActorContext:
+        return ActorContext(id="USER-1", username="Test Parent", roles=["parent"])
 
 
 async def _seed(session) -> None:
@@ -86,15 +94,12 @@ async def api():
             yield session
 
     app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_oidc_client] = lambda: _StubOIDCClient()
     transport = httpx.ASGITransport(app=app)
     clients: list[httpx.AsyncClient] = []
 
     def _make(authenticated: bool = True) -> httpx.AsyncClient:
-        cookies = (
-            {"hs_token": create_token("USER-1", ["parent"], "Test Parent")}
-            if authenticated
-            else {}
-        )
+        cookies = {"hs_token": "test-token"} if authenticated else {}
         client = httpx.AsyncClient(
             transport=transport, base_url="http://test", cookies=cookies
         )

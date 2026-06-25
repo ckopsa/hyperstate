@@ -9,8 +9,8 @@ from hyperstate.middleware import HyperStateMiddleware
 from hyperstate.response import HyperStateResponse
 from hyperstate.sections import ContentSection
 from hyperstate.nav import NavLink
-from hyperstate.auth import NotAuthenticated, NotAuthorized, login_action
-from app.web.auth.routes import router as auth_router
+from hyperstate.auth import NotAuthenticated, NotAuthorized
+from app.web.auth.routes import router as auth_router, keycloak_login_action
 from app.web.students.routes import router as students_router
 from app.web.students.options import router as students_options_router
 from app.web.subjects.routes import router as subjects_router
@@ -336,7 +336,7 @@ async def not_authenticated_handler(request, exc: NotAuthenticated):
         self_="/auth/login",
         sections=[
             ContentSection(body=exc.message, format="plain"),
-            login_action(),
+            keycloak_login_action(),
         ],
         nav=[NavLink(label="Home", href="/dashboard")],
     )

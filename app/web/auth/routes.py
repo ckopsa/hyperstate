@@ -1,139 +1,179 @@
 # app/web/auth/routes.py
-"""Authentication routes returning HyperState responses.
+"""Authentication routes for the Keycloak / OIDC authorization-code flow.
 
-Login and logout are actions within the hypermedia protocol — they return
-HyperStateResponse like everything else. The client doesn't need special
-auth handling; it just renders whatever the server sends.
+Login is a browser redirect, not a form the SPA renders: the server bounces
+the browser to Keycloak, Keycloak authenticates the user, then redirects back
+to ``/auth/callback`` with an authorization code. The callback exchanges the
+code for tokens, stores the access token in an httponly cookie, and redirects
+to the dashboard. Logout clears the cookie and ends the Keycloak SSO session.
+
+``/auth/me`` remains a normal HyperState response so the SPA can show the
+signed-in profile.
+
+The OIDC client is injected via ``Depends(get_oidc_client)`` so tests can
+swap in a stub without a live Keycloak.
 """
 
-from fastapi import APIRouter, Depends, Response
-from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
+from __future__ import annotations
 
-from hyperstate.response import HyperStateResponse, ViewContext
-from hyperstate.sections import ContentSection, PropertiesSection
+import secrets
+from urllib.parse import urlencode
+
+from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi.responses import RedirectResponse
+
+from hyperstate.auth import NotAuthenticated, logout_action
 from hyperstate.display import PropertyItem
-from hyperstate.flash import Flash
 from hyperstate.nav import NavLink
-from hyperstate.auth import login_action, logout_action, switch_user_action
+from hyperstate.response import ActorContext, HyperStateResponse, ViewContext
+from hyperstate.sections import ActionSection, ContentSection, PropertiesSection
 
-from app.web.auth.tokens import create_token
-from app.web.auth.users import authenticate, get_user_by_id, list_switchable_users
+from app.infrastructure.auth.config import OIDCConfig
+from app.infrastructure.auth.oidc import OIDCClient, get_oidc_client
 from app.web.deps import get_current_actor_optional
-from hyperstate.response import ActorContext
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# Cookie holding the Keycloak access token (see app/web/deps.py).
 _COOKIE_NAME = "hs_token"
-_COOKIE_MAX_AGE = 86400  # 24 hours
+# Short-lived cookie holding the OAuth `state` value for CSRF protection.
+_STATE_COOKIE = "oidc_state"
+_STATE_MAX_AGE = 300  # 5 minutes — long enough to log in at Keycloak.
+
+_DASHBOARD = "/dashboard"
 
 
-class LoginBody(BaseModel):
-    username: str
-    password: str
+def keycloak_login_action() -> ActionSection:
+    """A 'Sign In' affordance that starts the OIDC redirect (GET /auth/login).
 
-
-class SwitchBody(BaseModel):
-    user_id: str
-
-
-@router.get("/login", response_model=HyperStateResponse)
-async def login_page(
-    actor: ActorContext | None = Depends(get_current_actor_optional),
-):
-    """Show login form, or redirect to dashboard if already authenticated."""
-    if actor is not None:
-        return _already_authenticated_response(actor)
-
-    return HyperStateResponse(
-        view="form",
-        title="Sign In",
-        self_="/auth/login",
-        sections=[
-            ContentSection(
-                title="Welcome",
-                body="Sign in to access the homeschool planner. Demo accounts: parent/demo, student/demo, teacher/demo.",
-            ),
-            login_action(),
-        ],
-        nav=[NavLink(label="Home", href="/dashboard")],
+    Unlike the demo username/password form, login here is a browser navigation
+    to Keycloak, so the action is a GET button rather than a credentials form.
+    """
+    return ActionSection(
+        key="login",
+        label="Sign In",
+        method="GET",
+        href="/auth/login",
+        style="primary",
     )
 
 
-@router.post("/login", response_model=HyperStateResponse)
-async def login(body: LoginBody, response: Response):
-    """Authenticate and set the auth cookie."""
-    user = authenticate(body.username, body.password)
-    if user is None:
-        return HyperStateResponse(
-            view="form",
-            title="Sign In",
-            self_="/auth/login",
-            flash=Flash(type="error", title="Invalid credentials", body="Check your username and password."),
-            sections=[
-                login_action(),
-            ],
-            nav=[NavLink(label="Home", href="/dashboard")],
-        )
+@router.get("/login")
+async def login(
+    request: Request,
+    client: OIDCClient = Depends(get_oidc_client),
+    actor: ActorContext | None = Depends(get_current_actor_optional),
+) -> Response:
+    """Begin the OIDC login: redirect the browser to Keycloak.
 
-    token = create_token(user_id=user.id, roles=user.roles, name=user.name)
+    Already-authenticated callers are bounced straight to the dashboard. A
+    random `state` is stored in a short-lived cookie and echoed back by
+    Keycloak so the callback can reject forged or replayed redirects.
+    """
+    if actor is not None:
+        return RedirectResponse(_DASHBOARD, status_code=303)
+
+    state = secrets.token_urlsafe(32)
+    authorize_url = await client.authorization_url(state)
+    response = RedirectResponse(authorize_url, status_code=302)
     response.set_cookie(
-        key=_COOKIE_NAME,
-        value=token,
-        max_age=_COOKIE_MAX_AGE,
+        key=_STATE_COOKIE,
+        value=state,
+        max_age=_STATE_MAX_AGE,
         httponly=True,
         samesite="lax",
     )
+    return response
 
-    return HyperStateResponse(
-        view="detail",
-        title="Signed In",
-        self_="/auth/me",
-        flash=Flash(type="success", title=f"Welcome, {user.name}!"),
-        context=ViewContext(domain="auth", aggregate="session", state="authenticated"),
-        sections=[
-            PropertiesSection(data=[
-                PropertyItem(key="name", label="Name", value=user.name),
-                PropertyItem(key="roles", label="Roles", value=", ".join(user.roles), display="badge"),
-            ]),
-            logout_action(),
-        ],
-        nav=[NavLink(label="Dashboard", href="/dashboard")],
+
+@router.get("/callback")
+async def callback(
+    request: Request,
+    code: str | None = Query(default=None),
+    state: str | None = Query(default=None),
+    error: str | None = Query(default=None),
+    client: OIDCClient = Depends(get_oidc_client),
+) -> Response:
+    """Handle Keycloak's redirect: validate state, exchange code, set cookie.
+
+    On success, stores the access token in an httponly cookie and redirects to
+    the dashboard. Any failure (Keycloak error, missing code, or mismatched
+    state) raises NotAuthenticated → 401 login response.
+    """
+    if error:
+        raise NotAuthenticated(f"Login failed: {error}.")
+    if not code:
+        raise NotAuthenticated("Login response was missing the authorization code.")
+
+    expected_state = request.cookies.get(_STATE_COOKIE)
+    if not expected_state or not state or not secrets.compare_digest(state, expected_state):
+        raise NotAuthenticated("Login state did not match; please try again.")
+
+    token = await client.exchange_code(code)
+    access_token = token.get("access_token")
+    if not access_token:
+        raise NotAuthenticated("Keycloak did not return an access token.")
+
+    response = RedirectResponse(_DASHBOARD, status_code=303)
+    expires_in = token.get("expires_in")
+    response.set_cookie(
+        key=_COOKIE_NAME,
+        value=access_token,
+        max_age=int(expires_in) if isinstance(expires_in, (int, float)) else None,
+        httponly=True,
+        samesite="lax",
     )
+    response.delete_cookie(_STATE_COOKIE)
+    return response
 
 
-@router.post("/logout", response_model=HyperStateResponse)
-async def logout(response: Response):
-    """Clear the auth cookie and show the login form."""
-    response.delete_cookie(key=_COOKIE_NAME)
+@router.post("/logout")
+async def logout(
+    request: Request,
+    client: OIDCClient = Depends(get_oidc_client),
+) -> Response:
+    """Clear the auth cookie and end the Keycloak SSO session.
 
-    return HyperStateResponse(
-        view="form",
-        title="Signed Out",
-        self_="/auth/login",
-        flash=Flash(type="info", title="You have been signed out."),
-        sections=[
-            login_action(),
-        ],
-        nav=[NavLink(label="Home", href="/dashboard")],
-    )
+    Redirects to Keycloak's end-session endpoint (discovered from the issuer)
+    so the SSO session is terminated, then back to the login page. Falls back
+    to the local login page if the issuer advertises no end-session endpoint.
+    """
+    post_logout = f"{str(request.base_url).rstrip('/')}/auth/login"
+    target = post_logout
+    try:
+        meta = await client.discover()
+        end_session = meta.get("end_session_endpoint")
+    except Exception:
+        end_session = None
+    if end_session:
+        params = urlencode(
+            {
+                "client_id": OIDCConfig.from_env().client_id,
+                "post_logout_redirect_uri": post_logout,
+            }
+        )
+        target = f"{end_session}?{params}"
+
+    response = RedirectResponse(target, status_code=303)
+    response.delete_cookie(_COOKIE_NAME)
+    return response
 
 
 @router.get("/me", response_model=HyperStateResponse)
 async def current_user(
     actor: ActorContext | None = Depends(get_current_actor_optional),
 ):
-    """Show the current user's profile."""
+    """Show the signed-in user's profile, or a sign-in prompt if anonymous."""
     if actor is None:
         return HyperStateResponse(
             view="form",
             title="Not Signed In",
-            self_="/auth/login",
+            self_="/auth/me",
             sections=[
                 ContentSection(body="You are not signed in."),
-                login_action(),
+                keycloak_login_action(),
             ],
-            nav=[NavLink(label="Home", href="/dashboard")],
+            nav=[NavLink(label="Home", href=_DASHBOARD)],
         )
 
     return HyperStateResponse(
@@ -144,71 +184,10 @@ async def current_user(
         sections=[
             PropertiesSection(data=[
                 PropertyItem(key="id", label="User ID", value=actor.id),
-                PropertyItem(key="roles", label="Roles", value=", ".join(actor.roles), display="badge"),
-            ]),
-            switch_user_action(list_switchable_users()),
-            logout_action(),
-        ],
-        nav=[NavLink(label="Dashboard", href="/dashboard")],
-    )
-
-
-@router.post("/switch", response_model=HyperStateResponse)
-async def switch_user(body: SwitchBody, response: Response):
-    """Switch to a different demo user (dev/demo convenience)."""
-    user = get_user_by_id(body.user_id)
-    if user is None:
-        return HyperStateResponse(
-            view="error",
-            title="User Not Found",
-            self_="/auth/me",
-            flash=Flash(type="error", title="Unknown user."),
-            sections=[ContentSection(body=f"No user with ID '{body.user_id}'.")],
-            nav=[NavLink(label="Dashboard", href="/dashboard")],
-        )
-
-    token = create_token(user_id=user.id, roles=user.roles, name=user.name)
-    response.set_cookie(
-        key=_COOKIE_NAME,
-        value=token,
-        max_age=_COOKIE_MAX_AGE,
-        httponly=True,
-        samesite="lax",
-    )
-
-    return HyperStateResponse(
-        view="detail",
-        title="Switched User",
-        self_="/auth/me",
-        flash=Flash(type="success", title=f"Now signed in as {user.name}."),
-        context=ViewContext(
-            domain="auth", aggregate="session", state="authenticated",
-            actor=ActorContext(id=user.id, roles=user.roles),
-        ),
-        sections=[
-            PropertiesSection(data=[
-                PropertyItem(key="name", label="Name", value=user.name),
-                PropertyItem(key="roles", label="Roles", value=", ".join(user.roles), display="badge"),
-            ]),
-            switch_user_action(list_switchable_users()),
-            logout_action(),
-        ],
-        nav=[NavLink(label="Dashboard", href="/dashboard")],
-    )
-
-
-def _already_authenticated_response(actor: ActorContext) -> HyperStateResponse:
-    return HyperStateResponse(
-        view="detail",
-        title="Already Signed In",
-        self_="/auth/me",
-        context=ViewContext(domain="auth", aggregate="session", state="authenticated", actor=actor),
-        sections=[
-            PropertiesSection(data=[
-                PropertyItem(key="id", label="User ID", value=actor.id),
-                PropertyItem(key="roles", label="Roles", value=", ".join(actor.roles), display="badge"),
+                PropertyItem(key="username", label="Username", value=actor.username or "—"),
+                PropertyItem(key="roles", label="Roles", value=", ".join(actor.roles) or "—", display="badge"),
             ]),
             logout_action(),
         ],
-        nav=[NavLink(label="Dashboard", href="/dashboard")],
+        nav=[NavLink(label="Dashboard", href=_DASHBOARD)],
     )
