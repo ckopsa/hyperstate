@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +10,8 @@ from app.application.weekplan.decide_dinner import DecideDinner
 from app.application.weekplan.transition_weekplan import TransitionWeekPlan
 from app.domain.weekplan.aggregate import WeekPlan
 from app.domain.weekplan.errors import WeekPlanNotFound
+from app.domain.weekplan.schedule import compute_schedule
+from app.infrastructure.calendar.ics import render_schedule_ics
 from app.infrastructure.database import get_db
 from app.infrastructure.repositories.recipe_repo import RecipeRepository
 from app.infrastructure.repositories.weekplan_repo import WeekPlanRepository
@@ -82,6 +84,37 @@ async def get_weekplan(
     if plan is None:
         raise WeekPlanNotFound(plan_id)
     return await _detail(db, plan, actor)
+
+
+@router.get("/{plan_id}/schedule.ics")
+async def export_schedule_ics(
+    plan_id: str,
+    db: AsyncSession = Depends(get_db),
+    actor: ActorContext = Depends(get_current_actor),
+) -> Response:
+    """Download the plan's prep timeline as an iCalendar (.ics) file.
+
+    Renders the same ``compute_schedule`` events as the detail view's Prep
+    Schedule — one VEVENT per thaw and per cook-start — so the cook can
+    subscribe to the reminders from any calendar app.
+    """
+    plan = await WeekPlanRepository(db).get(plan_id)
+    if plan is None:
+        raise WeekPlanNotFound(plan_id)
+
+    # All recipes (any state) so already-decided dinners resolve to names and
+    # lead times, mirroring how the detail projection builds the timeline.
+    recipes = await RecipeRepository(db).list_all()
+    events = compute_schedule(plan, {r.id: r for r in recipes})
+    body = render_schedule_ics(plan.id, events)
+
+    return Response(
+        content=body,
+        media_type="text/calendar",
+        headers={
+            "Content-Disposition": f'attachment; filename="schedule-{plan.id}.ics"',
+        },
+    )
 
 
 @router.post("/{plan_id}/slots/{slot_date}", response_model=HyperStateResponse)
