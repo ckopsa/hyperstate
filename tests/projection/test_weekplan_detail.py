@@ -5,6 +5,9 @@ import pytest
 from app.domain.recipes.aggregate import Recipe
 from app.domain.recipes.states import RecipeState
 from app.domain.shared.themes import Theme
+from app.domain.shopping.aggregate import ShoppingList
+from app.domain.shopping.entities import ShoppingItem
+from app.domain.shopping.value_objects import Quantity
 from app.domain.weekplan.aggregate import WeekPlan
 from app.projection.weekplan.detail import WeekPlanDetailProjection
 from hyperstate.response import ActorContext
@@ -168,6 +171,37 @@ class TestLifecycleActions:
         assert "start_shopping" in keys
         assert "reopen" in keys
         assert "finish_shopping" not in keys
+
+
+class TestShoppingAction:
+    def test_no_shopping_action_while_planning(self, actor, recipes):
+        view = WeekPlanDetailProjection(decided_planning_plan(), recipes, actor).build()
+        keys = {a.key for a in _actions(view)}
+        assert "build-shopping-list" not in keys
+        assert "view-shopping-list" not in keys
+
+    def test_planned_without_list_offers_build(self, actor, recipes):
+        view = WeekPlanDetailProjection(planned_plan(), recipes, actor).build()
+        build = next(a for a in _actions(view) if a.key == "build-shopping-list")
+        assert build.method == "POST"
+        assert build.href == "/shopping/WP-2026-06-23"
+
+    def test_planned_with_list_offers_view_and_rebuild(self, actor, recipes):
+        shopping = ShoppingList(
+            week_plan_id="WP-2026-06-23",
+            items=[ShoppingItem(name="Beef", quantity=Quantity(1.0, "lb"))],
+        )
+        view = WeekPlanDetailProjection(
+            planned_plan(), recipes, actor, shopping_list=shopping
+        ).build()
+        keys = {a.key for a in _actions(view)}
+        assert "view-shopping-list" in keys
+        assert "rebuild-shopping-list" in keys
+        assert "build-shopping-list" not in keys
+
+        view_action = next(a for a in _actions(view) if a.key == "view-shopping-list")
+        assert view_action.method == "GET"
+        assert view_action.href == "/shopping/WP-2026-06-23"
 
 
 class TestContext:

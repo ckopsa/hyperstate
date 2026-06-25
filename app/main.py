@@ -23,6 +23,7 @@ from app.web.reports.routes import router as reports_router
 from app.web.curricula.routes import router as curricula_router
 from app.web.recipes.routes import router as recipes_router
 from app.web.weekplan.routes import router as weekplan_router
+from app.web.shopping.routes import router as shopping_router
 from fastapi.exceptions import RequestValidationError
 from app.domain.errors import DomainError
 from app.domain.students.errors import StudentNotFound
@@ -32,6 +33,7 @@ from app.domain.lessons.states import InvalidTransition
 from app.domain.curricula.errors import CurriculumNotFound, CurriculumItemNotFound
 from app.domain.recipes.errors import RecipeError, RecipeNotFound
 from app.domain.weekplan.errors import WeekPlanError, WeekPlanNotFound
+from app.domain.shopping.errors import ShoppingError, ShoppingListNotFound
 from app.application.lessons.delete_photo import PhotoNotFound
 
 from app.infrastructure.database import engine, Base, async_session
@@ -43,6 +45,7 @@ from app.infrastructure.models.instruction_day_model import InstructionDayRow  #
 from app.infrastructure.models.curriculum_model import CurriculumRow, CurriculumItemRow, CurriculumItemResourceRow  # noqa: F401
 from app.infrastructure.models.recipe_model import RecipeRow, IngredientRow  # noqa: F401
 from app.infrastructure.models.weekplan_model import WeekPlanRow, DinnerSlotRow  # noqa: F401
+from app.infrastructure.models.shopping_model import ShoppingListRow, ShoppingItemRow  # noqa: F401
 
 _UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads", "portfolio")
 
@@ -61,6 +64,7 @@ app.include_router(reports_router)
 app.include_router(curricula_router)
 app.include_router(recipes_router)
 app.include_router(weekplan_router)
+app.include_router(shopping_router)
 
 
 @app.on_event("startup")
@@ -287,6 +291,33 @@ async def weekplan_not_found_handler(request, exc: WeekPlanNotFound):
 
 @app.exception_handler(WeekPlanError)
 async def weekplan_error_handler(request, exc: WeekPlanError):
+    response = HyperStateResponse(
+        view="error",
+        title="Cannot Complete Action",
+        self_=str(request.url.path),
+        sections=[ContentSection(body=str(exc), format="plain")],
+        nav=[NavLink(label="All Week Plans", href="/weekplans", rel="collection")],
+    )
+    return JSONResponse(status_code=422, content=response.model_dump(by_alias=True, exclude_none=True))
+
+
+@app.exception_handler(ShoppingListNotFound)
+async def shopping_list_not_found_handler(request, exc: ShoppingListNotFound):
+    response = HyperStateResponse(
+        view="error",
+        title="Not Found",
+        self_=str(request.url.path),
+        sections=[ContentSection(
+            body=f"No shopping list for week plan {exc.week_plan_id}. Build it from the week plan first.",
+            format="plain",
+        )],
+        nav=[NavLink(label="Back to Week Plan", href=f"/weekplans/{exc.week_plan_id}", rel="up")],
+    )
+    return JSONResponse(status_code=404, content=response.model_dump(by_alias=True, exclude_none=True))
+
+
+@app.exception_handler(ShoppingError)
+async def shopping_error_handler(request, exc: ShoppingError):
     response = HyperStateResponse(
         view="error",
         title="Cannot Complete Action",

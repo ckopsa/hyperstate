@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, List
+from typing import TYPE_CHECKING, Iterable, List
 
 from app.domain.recipes.aggregate import Recipe
 from app.domain.recipes.states import RecipeState
@@ -26,6 +26,9 @@ from hyperstate.sections import (
     TimelineEvent,
     TimelineSection,
 )
+
+if TYPE_CHECKING:  # type-only — keeps the weekplan view decoupled from shopping
+    from app.domain.shopping.aggregate import ShoppingList
 
 
 # date.weekday(): Monday == 0 ... Sunday == 6
@@ -59,17 +62,25 @@ class WeekPlanDetailProjection:
     recipe picker, state-driven lifecycle actions, and the prep schedule
     timeline once the plan is finalized."""
 
-    def __init__(self, plan: WeekPlan, recipes: Iterable[Recipe], actor: ActorContext):
+    def __init__(
+        self,
+        plan: WeekPlan,
+        recipes: Iterable[Recipe],
+        actor: ActorContext,
+        shopping_list: "ShoppingList | None" = None,
+    ):
         self.plan = plan
         self.recipes = list(recipes)
         self.recipes_by_id = {r.id: r for r in self.recipes}
         self.actor = actor
+        self.shopping_list = shopping_list
 
     def build(self, flash: Flash | None = None) -> HyperStateResponse:
         plan = self.plan
 
         side_sections: List[Section] = [self._properties_section()]
         side_sections.extend(self._lifecycle_sections())
+        side_sections.extend(self._shopping_sections())
 
         main_sections: List[Section] = [self._slots_section()]
         timeline = self._timeline_section()
@@ -166,6 +177,44 @@ class WeekPlanDetailProjection:
             href=href,
             style="primary",
         )
+
+    # -- left column: shopping list -------------------------------------------
+
+    def _shopping_sections(self) -> List[ActionSection]:
+        """Shopping only makes sense once dinners are locked in. While PLANNING
+        there is nothing to shop for, so no action is shown; once finalized we
+        offer to build the list, then to view (or rebuild) it once it exists."""
+        plan = self.plan
+        if plan.state == WeekPlanState.PLANNING:
+            return []
+        href = f"/shopping/{plan.id}"
+        if self.shopping_list is None:
+            return [
+                ActionSection(
+                    key="build-shopping-list",
+                    label="Build Shopping List",
+                    method="POST",
+                    href=href,
+                    style="primary",
+                )
+            ]
+        return [
+            ActionSection(
+                key="view-shopping-list",
+                label="View Shopping List",
+                method="GET",
+                href=href,
+                style="primary",
+            ),
+            ActionSection(
+                key="rebuild-shopping-list",
+                label="Rebuild Shopping List",
+                method="POST",
+                href=href,
+                style="subtle",
+                confirm="Rebuild from the current plan? Item statuses will reset.",
+            ),
+        ]
 
     # -- main column: dinner slots --------------------------------------------
 

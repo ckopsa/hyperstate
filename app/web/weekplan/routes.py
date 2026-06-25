@@ -14,6 +14,7 @@ from app.domain.weekplan.schedule import compute_schedule
 from app.infrastructure.calendar.ics import render_schedule_ics
 from app.infrastructure.database import get_db
 from app.infrastructure.repositories.recipe_repo import RecipeRepository
+from app.infrastructure.repositories.shopping_repo import ShoppingListRepository
 from app.infrastructure.repositories.weekplan_repo import WeekPlanRepository
 from app.projection.weekplan.detail import WeekPlanDetailProjection
 from app.projection.weekplan.list import WeekPlanListProjection
@@ -50,7 +51,12 @@ async def _detail(
     # All recipes (any state) so already-decided dinners resolve to names and the
     # prep timeline can look them up; the picker filters to active ones itself.
     recipes = await RecipeRepository(db).list_all()
-    return WeekPlanDetailProjection(plan, recipes, actor).build(flash=flash)
+    # The shopping list (if built) drives whether the detail offers to build it
+    # or to view/rebuild the existing one.
+    shopping_list = await ShoppingListRepository(db).get(plan.id)
+    return WeekPlanDetailProjection(
+        plan, recipes, actor, shopping_list=shopping_list
+    ).build(flash=flash)
 
 
 @router.get("", response_model=HyperStateResponse)
