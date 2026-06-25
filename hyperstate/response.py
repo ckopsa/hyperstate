@@ -11,6 +11,7 @@ from .flash import Flash
 
 class ActorContext(BaseModel):
     id: str
+    username: str | None = None
     roles: list[str] = []
 
 
