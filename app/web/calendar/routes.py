@@ -1,13 +1,19 @@
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hyperstate.response import HyperStateResponse, ActorContext
+from app.domain.weekplan.schedule import compute_schedule
+from app.domain.weekplan.states import WeekPlanState
+from app.infrastructure.calendar.feed import feed_token_matches
+from app.infrastructure.calendar.ics import render_feed_ics
 from app.infrastructure.database import get_db
 from app.infrastructure.repositories.lesson_repo import LessonRepository
+from app.infrastructure.repositories.recipe_repo import RecipeRepository
 from app.infrastructure.repositories.subject_repo import SubjectRepository
+from app.infrastructure.repositories.weekplan_repo import WeekPlanRepository
 from app.projection.calendar.week import CalendarWeekProjection
 from app.application.calendar.move_lesson import MoveLesson
 from app.application.calendar.shift_week import ShiftWeek
@@ -93,4 +99,42 @@ async def shift_week(
         days=body.days,
         student_id=body.student_id,
         actor=actor,
+    )
+
+
+@router.get("/feed/{feed_token}.ics")
+async def household_feed_ics(
+    feed_token: str,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Serve every upcoming week's dinner prep as one iCalendar feed.
+
+    Built for Home Assistant's Remote Calendar (and any subscribe-by-URL client),
+    which poll a plain URL with no cookie. Access is therefore guarded by a single
+    household ``FEED_TOKEN`` carried in the path — not the login cookie — so this
+    route deliberately does NOT depend on ``get_current_actor``.
+
+    A token that does not match the configured secret (or any request when no
+    ``FEED_TOKEN`` is configured) gets a 404, so the feed's existence is not
+    revealed to anyone lacking the secret. Only non-completed weeks are included:
+    a finished week's reminders are in the past and would be noise.
+    """
+    if not feed_token_matches(feed_token):
+        raise HTTPException(status_code=404, detail="Calendar feed not found.")
+
+    plans = await WeekPlanRepository(db).list_all()
+    upcoming = [p for p in plans if p.state != WeekPlanState.COMPLETED]
+
+    # All recipes (any state) so decided dinners resolve to names and lead times,
+    # mirroring how the per-plan schedule.ics export builds its timeline.
+    recipes = await RecipeRepository(db).list_all()
+    recipe_map = {r.id: r for r in recipes}
+
+    feed = render_feed_ics(
+        (plan.id, compute_schedule(plan, recipe_map)) for plan in upcoming
+    )
+    return Response(
+        content=feed,
+        media_type="text/calendar",
+        headers={"Content-Disposition": 'inline; filename="dinner-feed.ics"'},
     )
