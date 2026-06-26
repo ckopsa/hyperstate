@@ -1,0 +1,64 @@
+{
+  "realm": "mealplan",
+  "enabled": true,
+  "displayName": "Mealplan",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "loginWithEmailAllowed": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "household-member",
+        "description": "Can use household meal planning workflows."
+      },
+      {
+        "name": "admin",
+        "description": "Can administer the household meal planner."
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "mealplan-app",
+      "name": "Mealplan App",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "mealplan-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8000/auth/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:8000"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:8000/auth/login"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "test-parent",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "Parent",
+      "email": "test-parent@example.test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "household-member",
+        "admin"
+      ]
+    }
+  ]
+}

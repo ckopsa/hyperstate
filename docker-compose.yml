@@ -17,5 +17,73 @@ services:
       timeout: 5s
       retries: 10
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: dinner-planner-keycloak
+    restart: unless-stopped
+    env_file:
+      - .env.example
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    command:
+      - start-dev
+      - --db=postgres
+      - --db-url=jdbc:postgresql://postgres:5432/keycloak
+      - --db-username=hyperstate
+      - --db-password=hyperstate
+      - --health-enabled=true
+      - --import-realm
+    ports:
+      - "${KEYCLOAK_PORT:-8080}:8080"
+    volumes:
+      - ./deploy/keycloak/realm-mealplan.json:/opt/keycloak/data/import/realm-mealplan.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '200 OK' <&3",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  app:
+    build: .
+    container_name: dinner-planner-app
+    restart: unless-stopped
+    env_file:
+      - .env.example
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://hyperstate:hyperstate@postgres:5432/mealplan}
+      OIDC_ISSUER: ${OIDC_ISSUER:-http://keycloak:8080/realms/mealplan}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-mealplan-app}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-mealplan-dev-secret}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-http://localhost:8000/auth/callback}
+      FEED_TOKEN: ${FEED_TOKEN:-change-me-to-a-long-random-secret}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5).read()",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
 volumes:
   postgres_data:
